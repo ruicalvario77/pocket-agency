@@ -6,26 +6,19 @@ export async function POST(req: Request) {
   console.log("🚀 PayFast Webhook Received!");
 
   try {
-    // Read Raw Body
-    const rawBody = await req.text();
-    console.log("📝 Raw ITN Data:", rawBody);
+    const data = await req.formData();
+    console.log("✅ Webhook Data:", Object.fromEntries(data.entries()));
 
-    // Parse Form Data
-    const params = new URLSearchParams(rawBody);
-    console.log("✅ Parsed ITN Data:", Object.fromEntries(params.entries()));
-
-    const m_payment_id = params.get("m_payment_id");
-    const pf_payment_status = params.get("payment_status");
-    const userId = params.get("custom_str1") || "";
+    const m_payment_id = data.get("m_payment_id");
+    const pf_payment_status = data.get("payment_status");
 
     console.log("📝 Extracted Data:");
     console.log("➡️ m_payment_id:", m_payment_id);
     console.log("➡️ pf_payment_status:", pf_payment_status);
-    console.log("➡️ userId:", userId);
 
-    if (pf_payment_status === "COMPLETE" && userId) {
-      const docRef = doc(collection(db, "subscriptions"), userId);
-
+    if (pf_payment_status === "COMPLETE") {
+      const docRef = doc(collection(db, "subscriptions"), m_payment_id as string);
+      
       await setDoc(docRef, {
         subscriptionId: m_payment_id,
         status: "active",
@@ -36,8 +29,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Subscription successful!" });
     }
 
-    console.log("❌ Payment not completed or missing userId.");
-    return NextResponse.json({ message: "Payment not completed or missing userId." });
+    console.log("❌ Payment not completed.");
+    return NextResponse.json({ message: "Payment not completed." });
   } catch (error) {
     console.error("🔥 Webhook Error:", error);
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });

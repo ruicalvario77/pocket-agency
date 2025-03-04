@@ -9,6 +9,8 @@ export default function Pricing() {
       <div className="mt-10 w-80 border p-6 rounded-lg shadow-md text-center">
         <h2 className="text-xl font-semibold">Pocket Agency Subscription</h2>
         <p className="mt-2 text-gray-600">R199/month - Unlimited project requests</p>
+        
+        {/* Form that submits to the backend without any additional modifications */}
         <form action="/api/payfast-subscribe" method="POST">
           <button
             type="submit"
