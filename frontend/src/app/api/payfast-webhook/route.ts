@@ -11,26 +11,33 @@ export async function POST(req: Request) {
 
     const m_payment_id = data.get("m_payment_id");
     const pf_payment_status = data.get("payment_status");
+    const userId = data.get("custom_str1")?.toString();
 
     console.log("📝 Extracted Data:");
     console.log("➡️ m_payment_id:", m_payment_id);
     console.log("➡️ pf_payment_status:", pf_payment_status);
+    console.log("➡️ userId:", userId || "❌ MISSING USER ID");
+
+    if (!userId) {
+      console.warn("❌ No user ID found in webhook.");
+      return NextResponse.json({ message: "Missing user ID" }, { status: 400 });
+    }
+
+    const subscriptionRef = doc(collection(db, "subscriptions"), userId);
 
     if (pf_payment_status === "COMPLETE") {
-      const docRef = doc(collection(db, "subscriptions"), m_payment_id as string);
-      
-      await setDoc(docRef, {
+      await setDoc(subscriptionRef, {
         subscriptionId: m_payment_id,
         status: "active",
         createdAt: new Date(),
       });
 
-      console.log("✅ Subscription saved to Firestore!");
-      return NextResponse.json({ message: "Subscription successful!" });
+      console.log("✅ Subscription activated in Firestore for user:", userId);
+    } else {
+      console.warn("❌ Payment not marked as COMPLETE.");
     }
 
-    console.log("❌ Payment not completed.");
-    return NextResponse.json({ message: "Payment not completed." });
+    return NextResponse.json({ message: "Subscription update successful!" });
   } catch (error) {
     console.error("🔥 Webhook Error:", error);
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });

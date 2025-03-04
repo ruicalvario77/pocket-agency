@@ -8,6 +8,7 @@ import { collection, addDoc, query, onSnapshot, getDoc, doc, updateDoc, deleteDo
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState("loading");
   const [projectTitle, setProjectTitle] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [projects, setProjects] = useState<any[]>([]);
@@ -16,20 +17,22 @@ export default function Dashboard() {
   const [editedDescription, setEditedDescription] = useState("");
   const router = useRouter();
 
-  // Check if user is authenticated
+  // Check user authentication & subscription status
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
       if (!currentUser) {
         router.push("/auth/login");
       } else {
         setUser(currentUser);
-  
+
         // Check if user has an active subscription
         const docRef = doc(db, "subscriptions", currentUser.uid);
         const docSnap = await getDoc(docRef);
-  
+
         if (!docSnap.exists() || docSnap.data().status !== "active") {
           router.push("/pricing"); // Redirect to Pricing if no active subscription
+        } else {
+          setSubscriptionStatus("active");
         }
       }
     });
@@ -112,7 +115,21 @@ export default function Dashboard() {
     }
   };
 
-  if (!user) {
+  // Handle Subscription Cancellation
+  const cancelSubscription = async () => {
+    if (!user) return;
+
+    const confirmCancel = window.confirm("Are you sure you want to cancel your subscription?");
+    if (!confirmCancel) return;
+
+    const subscriptionRef = doc(db, "subscriptions", user.uid);
+    await updateDoc(subscriptionRef, { status: "cancelled" });
+
+    alert("Your subscription has been cancelled.");
+    router.push("/pricing");
+  };
+
+  if (subscriptionStatus === "loading") {
     return <div className="text-center mt-20 text-xl">Loading...</div>;
   }
 
@@ -202,9 +219,18 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Cancel Subscription Button */}
+      <button
+        onClick={cancelSubscription}
+        className="mt-6 px-6 py-3 bg-red-500 text-white rounded-lg shadow-md hover:bg-red-700 transition"
+      >
+        Cancel Subscription
+      </button>
+
+      {/* Logout Button */}
       <button
         onClick={handleLogout}
-        className="mt-6 px-6 py-3 bg-red-600 text-white rounded-lg shadow-md hover:bg-red-700 transition"
+        className="mt-4 px-6 py-3 bg-gray-600 text-white rounded-lg shadow-md hover:bg-gray-700 transition"
       >
         Logout
       </button>

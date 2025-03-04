@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { auth } from "../../firebase/firebaseConfig";
 
 export async function POST() {
   console.log("🚀 PayFast Subscription Request Received");
+
+  const user = auth.currentUser;
+  if (!user) {
+    console.warn("❌ User is not logged in.");
+    return NextResponse.json({ error: "User not authenticated" }, { status: 401 });
+  }
+
+  console.log("✅ Logged-in User ID:", user.uid);
 
   // PayFast API Credentials
   const merchantId = "10037398";
@@ -25,10 +34,13 @@ export async function POST() {
     subscription_type: "1",
     frequency: "3",
     cycles: "0",
+    custom_str1: user.uid, // ✅ Store Firebase User ID
   };
 
   // Generate PayFast Signature
   const signature = generateSignature(paymentData, passphrase);
+
+  console.log("🔹 Sending User ID to PayFast:", paymentData.custom_str1);
 
   // Construct final URL (Ensure proper encoding)
   const paramString = Object.entries(paymentData)
