@@ -1,21 +1,13 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { getAuth } from "firebase/auth";
 
 export async function POST() {
-  const auth = getAuth();
-  const user = auth.currentUser;
+  console.log("🚀 PayFast Subscription Request Received");
 
-  if (!user) {
-    return NextResponse.json({ error: "User not authenticated" }, { status: 401 });
-  }
-
-  console.log("✅ Sending User ID to PayFast:", user.uid);
-
-  // PayFast API Credentials (Replace with your credentials)
+  // PayFast API Credentials
   const merchantId = "10037398";
   const merchantKey = "u4xw2uwnuthmh";
-  const passphrase = "Ru1j3ssale77-77"; // Ensure this is correct
+  const passphrase = "Ru1j3ssale77-77"; // Ensure this is correct and matches PayFast settings
 
   // Payment details (DO NOT SORT PARAMETERS ALPHABETICALLY)
   const paymentData = {
@@ -27,47 +19,49 @@ export async function POST() {
     name_first: "Pocket Agency",
     name_last: "Subscription",
     email_address: "billing@yourwebsite.com",
-    m_payment_id: "sub-" + Date.now(), // Unique ID for this subscription
+    m_payment_id: "sub-" + Date.now(),
     amount: "199.00",
     item_name: "Pocket Agency Monthly Subscription",
-    subscription_type: "1", // Recurring Subscription
-    frequency: "3", // Weekly subscription (valid value)
-    cycles: "0", // 0 = Infinite cycles
-    custom_str1: user.uid, // Store Firebase User ID
+    subscription_type: "1",
+    frequency: "3",
+    cycles: "0",
   };
 
   // Generate PayFast Signature
   const signature = generateSignature(paymentData, passphrase);
 
-  // Construct final URL
+  // Construct final URL (Ensure proper encoding)
   const paramString = Object.entries(paymentData)
     .map(([key, value]) => `${key}=${encodeURIComponent(value.trim()).replace(/%20/g, "+")}`)
     .join("&");
 
-  const payfastUrl = `https://sandbox.payfast.co.za/eng/process?${paramString}&signature=${signature}`;
+  const payfastUrl = `https://sandbox.payfast.co.za/eng/process?${paramString}&signature=${encodeURIComponent(signature)}`;
 
-  return NextResponse.redirect(payfastUrl);
+  console.log("✅ Final Redirect URL:", payfastUrl);
+  return NextResponse.redirect(payfastUrl, 303);
 }
 
-// Function to generate the PayFast signature correctly
+// Generate PayFast Signature
 const generateSignature = (data: Record<string, string>, passPhrase: string | null = null) => {
   let pfOutput = "";
-  const keys = [
-    "merchant_id", "merchant_key", "return_url", "cancel_url", "notify_url",
-    "name_first", "name_last", "email_address", "m_payment_id", "amount",
-    "item_name", "subscription_type", "frequency", "cycles", "custom_str1"
-  ];
 
-  for (let key of keys) {
-    if (data[key]) {
-      pfOutput += `${key}=${data[key].trim().replace(/ /g, "+")}&`;
+  // Create parameter string using ONLY non-empty values
+  for (let key in data) {
+    if (data.hasOwnProperty(key) && data[key] !== "") {
+      pfOutput += `${key}=${encodeURIComponent(data[key].trim()).replace(/%20/g, "+")}&`;
     }
   }
 
+  // Remove the last ampersand (&)
   let getString = pfOutput.slice(0, -1);
+
+  // Append passphrase if required
   if (passPhrase) {
-    getString += `&passphrase=${passPhrase.trim().replace(/ /g, "+")}`;
+    getString += `&passphrase=${encodeURIComponent(passPhrase.trim()).replace(/%20/g, "+")}`;
   }
 
-  return crypto.createHash("md5").update(getString).digest("hex");
+  console.log("🔹 PayFast Signature String (Before Hashing):", getString);
+
+  // Generate MD5 hash and return in lowercase
+  return crypto.createHash("md5").update(getString).digest("hex").toLowerCase();
 };
