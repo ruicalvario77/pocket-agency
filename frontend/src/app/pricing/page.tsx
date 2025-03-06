@@ -3,37 +3,35 @@
 import { auth } from "../firebase/firebaseConfig";
 
 const subscribeToPayfast = async () => {
-  const user = auth.currentUser;
-
-  if (!user) {
-    alert("You need to be logged in to subscribe.");
+  if (!auth.currentUser) {
+    console.warn("❌ No user logged in.");
+    alert("You need to be logged in before subscribing.");
     return;
   }
 
   try {
-    // ✅ Get Firebase Authentication token
-    const idToken = await user.getIdToken();
+    // ✅ Get the Firebase authentication token
+    const idToken = await auth.currentUser.getIdToken();
 
-    // ✅ Send request to backend with token
+    // ✅ Send request to the backend API with the Firebase token
     const response = await fetch("/api/payfast-subscribe", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${idToken}`, // ✅ Send Firebase token
+        Authorization: `Bearer ${idToken}`, // ✅ Send Firebase ID Token in headers
       },
     });
 
     const data = await response.json();
 
-    if (response.ok && data.redirectUrl) {
-      window.location.href = data.redirectUrl; // ✅ Redirect user to PayFast payment page
+    if (data.redirectUrl) {
+      window.location.href = data.redirectUrl; // Redirect to PayFast
     } else {
-      console.error("❌ Subscription Error:", data.error);
-      alert("Subscription failed: " + data.error);
+      alert("Error processing subscription: " + data.error);
     }
   } catch (error) {
-    console.error("🔥 Error subscribing:", error);
-    alert("An error occurred. Please try again.");
+    console.error("🔥 Subscription error:", error);
+    alert("An error occurred while processing your subscription.");
   }
 };
 
