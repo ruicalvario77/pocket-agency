@@ -1,25 +1,65 @@
+// src/app/pricing/page.tsx
 "use client";
 
-export default function Pricing() {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <h1 className="text-3xl font-bold">Choose Your Plan</h1>
-      <p className="mt-2 text-gray-700">Unlock unlimited project submissions with a simple subscription.</p>
+import { useState } from "react";
+import { getAuth } from "firebase/auth";
 
-      <div className="mt-10 w-80 border p-6 rounded-lg shadow-md text-center">
-        <h2 className="text-xl font-semibold">Pocket Agency Subscription</h2>
-        <p className="mt-2 text-gray-600">R199/month - Unlimited project requests</p>
-        
-        {/* Form that submits to the backend without any additional modifications */}
-        <form action="/api/payfast-subscribe" method="POST">
-          <button
-            type="submit"
-            className="mt-6 px-6 py-3 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition"
-          >
-            Subscribe Now
+const PricingPage = () => {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubscribe = async (plan: string) => {
+    setLoading(true);
+    const auth = getAuth();
+    const user = auth.currentUser;
+    let idToken: string | null = null;
+
+    if (user) {
+      idToken = await user.getIdToken();
+    }
+
+    try {
+      const response = await fetch("/api/payfast-subscribe", {
+        method: "POST",
+        headers: {
+          ...(idToken && { Authorization: `Bearer ${idToken}` }),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ plan }),
+      });
+
+      if (!response.ok) throw new Error("Failed to initiate subscription");
+
+      const { redirectUrl } = await response.json();
+      window.location.href = redirectUrl;
+    } catch (error) {
+      console.error("Subscription error:", error);
+      alert("An error occurred while initiating your subscription.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="pricing-container">
+      <h1>Choose Your Plan</h1>
+      <div className="plans">
+        <div className="plan">
+          <h2>Basic Plan</h2>
+          <p>$10/month</p>
+          <button onClick={() => handleSubscribe("basic")} disabled={loading}>
+            {loading ? "Processing..." : "Subscribe"}
           </button>
-        </form>
+        </div>
+        <div className="plan">
+          <h2>Pro Plan</h2>
+          <p>$20/month</p>
+          <button onClick={() => handleSubscribe("pro")} disabled={loading}>
+            {loading ? "Processing..." : "Subscribe"}
+          </button>
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default PricingPage;
