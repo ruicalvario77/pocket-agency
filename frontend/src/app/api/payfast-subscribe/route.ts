@@ -15,7 +15,7 @@ export async function POST() {
     merchant_key: merchantKey,
     return_url: "https://automatic-guacamole-5gr4p7wjr4xp24w5g-3000.app.github.dev/success",
     cancel_url: "https://automatic-guacamole-5gr4p7wjr4xp24w5g-3000.app.github.dev/pricing",
-    notify_url: "https://1542-20-192-21-51.ngrok-free.app/api/payfast-webhook",
+    notify_url: "https://8e84-20-192-21-48.ngrok-free.app/api/payfast-webhook",
     name_first: "Pocket Agency",
     name_last: "Subscription",
     email_address: "billing@yourwebsite.com",
