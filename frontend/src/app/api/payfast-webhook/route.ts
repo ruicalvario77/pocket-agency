@@ -1,38 +1,43 @@
-import { NextResponse } from "next/server";
-import { db } from "../../firebase/firebaseConfig";
-import { doc, setDoc, collection } from "firebase/firestore";
+// src/app/api/payfast-webhook/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/app/firebase/admin";
+import { sendAssociationEmail } from "@/app/utils/email";
 
-export async function POST(req: Request) {
-  console.log("🚀 PayFast Webhook Received!");
-
+export async function POST(req: NextRequest) {
   try {
-    const data = await req.formData();
-    console.log("✅ Webhook Data:", Object.fromEntries(data.entries()));
+    const data = await req.text();
+    const parsedData = Object.fromEntries(new URLSearchParams(data));
+    const subscriptionId = parsedData.custom_str1;
+    const paymentStatus = parsedData.payment_status;
 
-    const m_payment_id = data.get("m_payment_id");
-    const pf_payment_status = data.get("payment_status");
+    if (!subscriptionId) throw new Error("Missing subscription ID");
 
-    console.log("📝 Extracted Data:");
-    console.log("➡️ m_payment_id:", m_payment_id);
-    console.log("➡️ pf_payment_status:", pf_payment_status);
+    if (paymentStatus === "COMPLETE") {
+      const subscriptionDoc = db.collection("subscriptions").doc(subscriptionId);
+      const subscription = (await subscriptionDoc.get()).data();
 
-    if (pf_payment_status === "COMPLETE") {
-      const docRef = doc(collection(db, "subscriptions"), m_payment_id as string);
-      
-      await setDoc(docRef, {
-        subscriptionId: m_payment_id,
+      await subscriptionDoc.update({
         status: "active",
-        createdAt: new Date(),
+        payfastSubscriptionId: parsedData.m_payment_id || subscriptionId,
+        updatedAt: new Date().toISOString(),
       });
 
-      console.log("✅ Subscription saved to Firestore!");
-      return NextResponse.json({ message: "Subscription successful!" });
+      if (!subscription?.userId) {
+        const associationToken = require("crypto").randomBytes(16).toString("hex");
+        await subscriptionDoc.update({
+          associationToken,
+          tokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+        });
+
+        const email = parsedData.buyer_email || "user@example.com"; // Adjust based on PayFast data
+        const associationLink = `https://yourwebsite.com/associate-account?token=${associationToken}`;
+        await sendAssociationEmail(email, associationLink);
+      }
     }
 
-    console.log("❌ Payment not completed.");
-    return NextResponse.json({ message: "Payment not completed." });
+    return NextResponse.json({ message: "OK" }, { status: 200 });
   } catch (error) {
-    console.error("🔥 Webhook Error:", error);
-    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+    console.error("Webhook error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { auth, db } from "../firebase/firebaseConfig";
 import { useRouter } from "next/navigation";
+import { auth, db } from "../firebase/firebaseConfig";
 import { signOut } from "firebase/auth";
 import { collection, addDoc, query, onSnapshot, getDoc, doc, updateDoc, deleteDoc } from "firebase/firestore";
 
