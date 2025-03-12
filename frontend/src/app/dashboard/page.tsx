@@ -1,52 +1,81 @@
+// src/app/dashboard/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { auth, db } from "../firebase/firebaseConfig";
+import { auth } from "@/app/firebase/firebaseConfig"; // Updated import
 import { signOut } from "firebase/auth";
-import { collection, addDoc, query, onSnapshot, getDoc, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  query,
+  where,
+  onSnapshot,
+  getDocs,
+  doc,
+  updateDoc,
+  deleteDoc,
+} from "firebase/firestore";
+
+interface Project {
+  id: string;
+  userId: string;
+  title: string;
+  description: string;
+  createdAt: Date | string;
+}
 
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<any>(null); // Will refine type later
   const [projectTitle, setProjectTitle] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
-  const [projects, setProjects] = useState<any[]>([]);
-  const [editingProject, setEditingProject] = useState<any>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const db = getFirestore(); // Client-side Firestore
 
-  // Check if user is authenticated
+  // Check authentication and subscription
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
       if (!currentUser) {
         router.push("/auth/login");
-      } else {
-        setUser(currentUser);
-  
-        // Check if user has an active subscription
-        const docRef = doc(db, "subscriptions", currentUser.uid);
-        const docSnap = await getDoc(docRef);
-  
-        if (!docSnap.exists() || docSnap.data().status !== "active") {
-          router.push("/pricing"); // Redirect to Pricing if no active subscription
-        }
+        return;
       }
+
+      setUser(currentUser);
+
+      // Check for active subscription
+      const q = query(
+        collection(db, "subscriptions"),
+        where("userId", "==", currentUser.uid),
+        where("status", "==", "active")
+      );
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        router.push("/pricing"); // Redirect if no active subscription
+      }
+
+      setLoading(false);
     });
 
     return () => unsubscribe();
   }, [router]);
 
-  // Fetch projects from Firestore in real-time
+  // Fetch user's projects in real-time
   useEffect(() => {
     if (!user) return;
 
-    const q = query(collection(db, "projects"));
+    const q = query(collection(db, "projects"), where("userId", "==", user.uid));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const projectList = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-      }));
+      })) as Project[];
       setProjects(projectList);
     });
 
@@ -63,7 +92,7 @@ export default function Dashboard() {
   const handleSubmitProject = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!projectTitle || !projectDescription) return;
+    if (!projectTitle || !projectDescription || !user) return;
 
     try {
       await addDoc(collection(db, "projects"), {
@@ -90,7 +119,7 @@ export default function Dashboard() {
   };
 
   // Open Edit Modal
-  const handleEditProject = (project: any) => {
+  const handleEditProject = (project: Project) => {
     setEditingProject(project);
     setEditedTitle(project.title);
     setEditedDescription(project.description);
@@ -112,7 +141,7 @@ export default function Dashboard() {
     }
   };
 
-  if (!user) {
+  if (loading) {
     return <div className="text-center mt-20 text-xl">Loading...</div>;
   }
 
@@ -191,10 +220,16 @@ export default function Dashboard() {
               onChange={(e) => setEditedDescription(e.target.value)}
             />
             <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => setEditingProject(null)} className="px-4 py-2 bg-gray-300 rounded">
+              <button
+                onClick={() => setEditingProject(null)}
+                className="px-4 py-2 bg-gray-300 rounded"
+              >
                 Cancel
               </button>
-              <button onClick={handleUpdateProject} className="px-4 py-2 bg-blue-600 text-white rounded">
+              <button
+                onClick={handleUpdateProject}
+                className="px-4 py-2 bg-blue-600 text-white rounded"
+              >
                 Update
               </button>
             </div>
