@@ -23,6 +23,7 @@ interface Project {
   userId: string;
   title: string;
   description: string;
+  status: string; // Added
   createdAt: Date | string;
 }
 
@@ -91,17 +92,16 @@ export default function Dashboard() {
   // Handle Project Submission
   const handleSubmitProject = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!projectTitle || !projectDescription || !user) return;
-
+  
     try {
       await addDoc(collection(db, "projects"), {
         userId: user.uid,
         title: projectTitle,
         description: projectDescription,
+        status: "pending", // Default status
         createdAt: new Date(),
       });
-
       setProjectTitle("");
       setProjectDescription("");
     } catch (error) {
@@ -183,6 +183,7 @@ export default function Dashboard() {
               <li key={project.id} className="border p-3 rounded shadow-md">
                 <h3 className="font-semibold">{project.title}</h3>
                 <p className="text-gray-600">{project.description}</p>
+                <p className="text-sm text-gray-500">Status: {project.status || "pending"}</p>
                 <div className="mt-2 flex gap-2">
                   <button
                     onClick={() => handleEditProject(project)}

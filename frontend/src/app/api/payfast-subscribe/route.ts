@@ -1,6 +1,6 @@
 // src/app/api/payfast-subscribe/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "crypto";
+const nodeCrypto = require("crypto") as typeof import("crypto");
 import { auth, db } from "@/app/firebase/admin";
 
 export async function POST(req: NextRequest) {
@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   const merchantId = process.env.PAYFAST_MERCHANT_ID || "10037398";
   const merchantKey = process.env.PAYFAST_MERCHANT_KEY || "u4xw2uwnuthmh";
   const passphrase = process.env.PAYFAST_PASSPHRASE || "Ru1j3ssale77-77";
-  const notifyUrl = process.env.PAYFAST_NOTIFY_URL || "https://f9a6-20-192-21-53.ngrok-free.app/api/payfast-webhook";
+  const notifyUrl = process.env.PAYFAST_NOTIFY_URL || "https://4588-20-192-21-53.ngrok-free.app/api/payfast-webhook";
 
   const authHeader = req.headers.get("Authorization");
   let userId: string | null = null;
@@ -43,16 +43,15 @@ export async function POST(req: NextRequest) {
   });
   const subscriptionId = subscriptionRef.id;
 
-  // Define payment data in the exact order specified
   const paymentData: [string, string][] = [
     ["merchant_id", merchantId],
     ["merchant_key", merchantKey],
-    ["return_url", "https://automatic-guacamole-5gr4p7wjr4xp24w5g-3000.app.github.dev/success"],
-    ["cancel_url", "https://automatic-guacamole-5gr4p7wjr4xp24w5g-3000.app.github.dev/pricing"],
+    ["return_url", "https://4588-20-192-21-53.ngrok-free.app/success"], // Updated
+    ["cancel_url", "https://4588-20-192-21-53.ngrok-free.app/pricing"],
     ["notify_url", notifyUrl],
     ["name_first", "Pocket Agency"],
     ["name_last", "Subscription"],
-    ["email_address", "billing@yourwebsite.com"],
+    ["email_address", "ruicalvario777@gmail.com"],
     ["m_payment_id", subscriptionId],
     ["amount", amount],
     ["item_name", itemName],
@@ -66,7 +65,6 @@ export async function POST(req: NextRequest) {
 
   const signature = generateSignature(paymentData, passphrase);
 
-  // Construct the final URL
   const baseUrl = "https://sandbox.payfast.co.za/eng/process";
   const queryString = paymentData
     .map(([key, value]) => `${key}=${encodeURIComponent(value.trim()).replace(/%20/g, "+")}`)
@@ -91,5 +89,5 @@ const generateSignature = (data: [string, string][], passPhrase: string | null =
     getString += `&passphrase=${encodeURIComponent(passPhrase.trim()).replace(/%20/g, "+")}`;
   }
   console.log("🔹 PayFast Signature String (Before Hashing):", getString);
-  return crypto.createHash("md5").update(getString).digest("hex").toLowerCase();
+  return nodeCrypto.createHash("md5").update(getString).digest("hex").toLowerCase();
 };

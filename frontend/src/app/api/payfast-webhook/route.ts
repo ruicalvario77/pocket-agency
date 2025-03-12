@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 
   const baseSignatureString = body.split("&").filter(param => !param.startsWith("signature=")).join("&");
   const passphrase = process.env.PAYFAST_PASSPHRASE || "Ru1j3ssale77-77";
-  const signatureString = `${baseSignatureString}&passphrase=${passphrase}`; // No encodeURIComponent
+  const signatureString = `${baseSignatureString}&passphrase=${passphrase}`;
   console.log("Signature string (with passphrase):", signatureString);
   console.log("Signature string length:", signatureString.length);
 
@@ -44,9 +44,6 @@ export async function POST(req: NextRequest) {
     .digest("hex")
     .toLowerCase();
   console.log("Computed signature:", computedSignature, "Received signature:", receivedSignature);
-
-  const expectedTesterHash = "9afe2f590ac1b342f765b676c7a3d7fa";
-  console.log("ITN Tester expected hash:", expectedTesterHash);
 
   if (computedSignature !== receivedSignature) {
     console.error("Invalid signature:", { computedSignature, receivedSignature });
@@ -93,9 +90,13 @@ export async function POST(req: NextRequest) {
       updateData.associationToken = associationToken;
       updateData.tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-      const associationLink = `${process.env.NEXT_PUBLIC_BASE_URL || "https://f9a6-20-192-21-53.ngrok-free.app"}/associate-account?token=${associationToken}`;
-      await sendAssociationEmail(email_address || "user@example.com", associationLink);
-      console.log("📧 Association email sent to:", email_address, "Link:", associationLink);
+      const associationLink = `${process.env.NEXT_PUBLIC_BASE_URL || "https://4588-20-192-21-53.ngrok-free.app"}/associate-account?token=${associationToken}`;
+      try {
+        await sendAssociationEmail(email_address || "user@example.com", associationLink);
+        console.log("📧 Association email sent to:", email_address, "Link:", associationLink);
+      } catch (error) {
+        console.error("Failed to send association email (continuing anyway):", error);
+      }
     }
 
     await subscriptionRef.update(updateData);

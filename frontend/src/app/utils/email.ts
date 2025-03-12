@@ -1,14 +1,7 @@
 // src/app/utils/email.ts
 import nodemailer from "nodemailer";
 
-export async function sendAssociationEmail(to: string, link: string): Promise<void> {
-  // Validate environment variables
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.error("Email configuration missing: EMAIL_USER and EMAIL_PASS must be set in .env.local");
-    throw new Error("Email service not configured");
-  }
-
-  // Configure Nodemailer transport
+export async function sendAssociationEmail(to: string, associationLink: string) {
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -17,14 +10,17 @@ export async function sendAssociationEmail(to: string, link: string): Promise<vo
     },
   });
 
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to,
+    subject: "Associate Your Pocket Agency Subscription",
+    text: `Please click the link to associate your account: ${associationLink}`,
+    html: `<p>Please click the link to associate your account: <a href="${associationLink}">${associationLink}</a></p>`,
+  };
+
   try {
-    await transporter.sendMail({
-      from: "Pocket Agency <no-reply@pocketagency.com>",
-      to,
-      subject: "Associate Your Subscription",
-      html: `Click <a href="${link}">here</a> to associate your subscription with an account. This link expires in 24 hours.`,
-    });
-    console.log(`Association email sent to ${to} with link: ${link}`);
+    await transporter.sendMail(mailOptions);
+    console.log("Association email sent successfully to:", to);
   } catch (error) {
     console.error("Failed to send association email:", error);
     throw new Error("Failed to send association email");
