@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://automatic-guacamole-5gr4p7wjr4xp24w5g-3000.app.github.dev/
+
+# Sitemaps
+Sitemap: https://automatic-guacamole-5gr4p7wjr4xp24w5g-3000.app.github.dev/sitemap.xml
