@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { auth, db } from "@/app/firebase/firebaseConfig";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
-import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, updateDoc, setDoc } from "firebase/firestore";
 
 export default function AssociateAccount() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState(""); // New field
   const [isNewUser, setIsNewUser] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -26,8 +27,15 @@ export default function AssociateAccount() {
     try {
       let userId: string;
       if (isNewUser) {
+        if (!fullName) throw new Error("Full name is required for new users.");
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         userId = userCredential.user.uid;
+        // Store user details
+        await setDoc(doc(db, "users", userId), {
+          email,
+          fullName,
+          onboardingCompleted: false, // Set to false initially
+        }, { merge: true });
       } else {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         userId = userCredential.user.uid;
@@ -36,7 +44,7 @@ export default function AssociateAccount() {
       console.log("Token from URL:", token);
       const q = query(
         collection(db, "subscriptions"),
-        where("associationToken", "==", token), // Changed to associationToken
+        where("associationToken", "==", token),
         where("temp", "==", true)
       );
       const querySnapshot = await getDocs(q);
@@ -53,11 +61,11 @@ export default function AssociateAccount() {
       await updateDoc(subscriptionRef, {
         userId,
         temp: false,
-        associationToken: null, // Clear token after use
+        associationToken: null,
         tokenExpiresAt: null,
       });
 
-      router.push("/dashboard");
+      router.push("/onboarding");
     } catch (err: any) {
       setError("Failed to " + (isNewUser ? "sign up" : "log in") + ": " + err.message);
       console.error("Association error:", err);
@@ -85,6 +93,16 @@ export default function AssociateAccount() {
           className="border p-2 rounded"
           required
         />
+        {isNewUser && (
+          <input
+            type="text"
+            placeholder="Full Name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            className="border p-2 rounded"
+            required
+          />
+        )}
         <div className="flex items-center gap-2">
           <input
             type="checkbox"
