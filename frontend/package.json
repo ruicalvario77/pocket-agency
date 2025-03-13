@@ -6,26 +6,32 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "sitemap": "next-sitemap"
   },
   "dependencies": {
     "crypto": "^1.0.1",
     "firebase": "^11.4.0",
-    "firebase-admin": "^13.1.0",
+    "firebase-admin": "^13.2.0",
     "firestore": "^1.1.6",
     "next": "15.2.0",
+    "next-sitemap": "^4.2.3",
+    "nodemailer": "^6.10.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-firebase-hooks": "^5.1.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/nodemailer": "^6.4.17",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.2.0",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }
