@@ -2,56 +2,64 @@
 import { NextRequest, NextResponse } from "next/server";
 const nodeCrypto = require("crypto") as typeof import("crypto");
 import { auth, db } from "@/app/firebase/admin";
+import { sendAssociationEmail } from "@/app/utils/email"; // Import email utility
 
 export async function POST(req: NextRequest) {
   console.log("🚀 PayFast Subscription Request Received");
-  console.log("Using PAYFAST_NOTIFY_URL:", process.env.PAYFAST_NOTIFY_URL);
+  const notifyUrl = process.env.PAYFAST_NOTIFY_URL || "https://c197-4-240-39-194.ngrok-free.app/api/payfast-webhook";
 
   const merchantId = process.env.PAYFAST_MERCHANT_ID || "10037398";
   const merchantKey = process.env.PAYFAST_MERCHANT_KEY || "u4xw2uwnuthmh";
   const passphrase = process.env.PAYFAST_PASSPHRASE || "Ru1j3ssale77-77";
-  const notifyUrl = process.env.PAYFAST_NOTIFY_URL || "https://4588-20-192-21-53.ngrok-free.app/api/payfast-webhook";
 
   const authHeader = req.headers.get("Authorization");
   let userId: string | null = null;
+  let userEmail: string | null = null;
 
   if (authHeader?.startsWith("Bearer ")) {
     const idToken = authHeader.split("Bearer ")[1];
     try {
       const decodedToken = await auth.verifyIdToken(idToken);
       userId = decodedToken.uid;
+      userEmail = decodedToken.email || null;
     } catch (error) {
       console.error("Error verifying token:", error);
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
   }
 
-  const { plan }: { plan: "basic" | "pro" } = await req.json();
+  const { plan, email }: { plan: "basic" | "pro"; email?: string } = await req.json();
   if (!plan) {
     return NextResponse.json({ error: "Plan is required" }, { status: 400 });
+  }
+  if (!userId && !email) {
+    return NextResponse.json({ error: "Email is required for unauthenticated users" }, { status: 400 });
   }
 
   const amount = plan === "basic" ? "199.00" : "399.00";
   const itemName = `Pocket Agency ${plan.charAt(0).toUpperCase() + plan.slice(1)} Subscription`;
+  const finalEmail = userEmail || email || "temp@example.com"; // Fallback for safety
 
   const subscriptionRef = await db.collection("subscriptions").add({
     userId,
     plan,
     status: "pending",
     amount,
+    email_address: finalEmail,
     createdAt: new Date().toISOString(),
+    temp: !userId, // Flag for unauthenticated
   });
   const subscriptionId = subscriptionRef.id;
 
   const paymentData: [string, string][] = [
     ["merchant_id", merchantId],
     ["merchant_key", merchantKey],
-    ["return_url", "https://4588-20-192-21-53.ngrok-free.app/success"], // Updated
-    ["cancel_url", "https://4588-20-192-21-53.ngrok-free.app/pricing"],
+    ["return_url", "https://c197-4-240-39-194.ngrok-free.app/success"],
+    ["cancel_url", "https://c197-4-240-39-194.ngrok-free.app/pricing"],
     ["notify_url", notifyUrl],
     ["name_first", "Pocket Agency"],
     ["name_last", "Subscription"],
-    ["email_address", "ruicalvario777@gmail.com"],
+    ["email_address", finalEmail],
     ["m_payment_id", subscriptionId],
     ["amount", amount],
     ["item_name", itemName],
@@ -65,16 +73,9 @@ export async function POST(req: NextRequest) {
 
   const signature = generateSignature(paymentData, passphrase);
 
-  const baseUrl = "https://sandbox.payfast.co.za/eng/process";
-  const queryString = paymentData
-    .map(([key, value]) => `${key}=${encodeURIComponent(value.trim()).replace(/%20/g, "+")}`)
-    .join("&") + `&signature=${signature}`;
-  const finalUrl = `${baseUrl}?${queryString}`;
-
-  console.log("✅ Final URL sent to PayFast:", finalUrl);
   console.log("✅ Payment Data Prepared:", { paymentData, signature });
 
-  return NextResponse.json({ paymentData, signature, finalUrl }, { status: 200 });
+  return NextResponse.json({ paymentData, signature }, { status: 200 });
 }
 
 const generateSignature = (data: [string, string][], passPhrase: string | null = null) => {

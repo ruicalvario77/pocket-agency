@@ -1,6 +1,5 @@
 // src/app/pricing/page.tsx
 "use client";
-
 import { useState, useRef, useEffect } from "react";
 import { auth } from "@/app/firebase/firebaseConfig";
 
@@ -8,9 +7,15 @@ const PricingPage = () => {
   const [loading, setLoading] = useState(false);
   const [paymentData, setPaymentData] = useState<[string, string][] | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubscribe = async (plan: "basic" | "pro") => {
+    if (!email) {
+      alert("Please enter an email address to subscribe.");
+      return;
+    }
+
     setLoading(true);
     const user = auth.currentUser;
     let idToken: string | null = null;
@@ -26,7 +31,7 @@ const PricingPage = () => {
           ...(idToken && { Authorization: `Bearer ${idToken}` }),
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, email: email || user?.email }),
       });
       console.log("Fetch response status:", response.status);
 
@@ -50,8 +55,6 @@ const PricingPage = () => {
   useEffect(() => {
     if (paymentData && signature && formRef.current) {
       console.log("Submitting PayFast form with data:", paymentData, "Signature:", signature);
-      const formData = new FormData(formRef.current);
-      console.log("Form data being sent:", Array.from(formData.entries()));
       formRef.current.submit();
     }
   }, [paymentData, signature]);
@@ -63,6 +66,21 @@ const PricingPage = () => {
         <p className="text-lg text-gray-600 text-center mb-12">
           Affordable subscriptions for top-tier design and development services.
         </p>
+
+        <div className="text-center mb-8">
+          <input
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="border p-2 rounded w-64"
+            required
+            disabled={!!auth.currentUser} // Disable if logged in
+          />
+          {auth.currentUser && (
+            <p className="text-sm text-gray-600 mt-2">Using {auth.currentUser.email}</p>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {/* Basic Plan */}
@@ -82,7 +100,7 @@ const PricingPage = () => {
                 loading ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
               }`}
             >
-              {loading ? "Processing..." : "Subscribe Now"}
+              {loading ? "Processing..." : "Confirm Plan"}
             </button>
           </div>
 
@@ -104,13 +122,12 @@ const PricingPage = () => {
                 loading ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
               }`}
             >
-              {loading ? "Processing..." : "Subscribe Now"}
+              {loading ? "Processing..." : "Confirm Plan"}
             </button>
           </div>
         </div>
       </section>
 
-      {/* Hidden PayFast Form */}
       {paymentData && signature && (
         <form
           ref={formRef}
