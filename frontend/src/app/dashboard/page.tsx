@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { auth } from "@/app/firebase/firebaseConfig"; // Updated import
+import { auth } from "@/app/firebase/firebaseConfig";
 import { signOut } from "firebase/auth";
 import {
   getFirestore,
@@ -16,6 +16,7 @@ import {
   doc,
   updateDoc,
   deleteDoc,
+  getDoc, // Added for onboarding check
 } from "firebase/firestore";
 
 interface Project {
@@ -23,7 +24,7 @@ interface Project {
   userId: string;
   title: string;
   description: string;
-  status: string; // Added
+  status: string;
   createdAt: Date | string;
 }
 
@@ -37,9 +38,9 @@ export default function Dashboard() {
   const [editedDescription, setEditedDescription] = useState("");
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const db = getFirestore(); // Client-side Firestore
+  const db = getFirestore();
 
-  // Check authentication and subscription
+  // Check authentication, subscription, and onboarding
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
       if (!currentUser) {
@@ -50,15 +51,24 @@ export default function Dashboard() {
       setUser(currentUser);
 
       // Check for active subscription
-      const q = query(
+      const subQuery = query(
         collection(db, "subscriptions"),
         where("userId", "==", currentUser.uid),
         where("status", "==", "active")
       );
-      const querySnapshot = await getDocs(q);
+      const subSnapshot = await getDocs(subQuery);
 
-      if (querySnapshot.empty) {
-        router.push("/pricing"); // Redirect if no active subscription
+      if (subSnapshot.empty) {
+        router.push("/pricing");
+        return;
+      }
+
+      // Check onboarding status
+      const userDocRef = doc(db, "users", currentUser.uid);
+      const userDoc = await getDoc(userDocRef);
+      if (!userDoc.exists() || !userDoc.data()?.onboardingCompleted) {
+        router.push("/onboarding");
+        return;
       }
 
       setLoading(false);
@@ -69,7 +79,7 @@ export default function Dashboard() {
 
   // Fetch user's projects in real-time
   useEffect(() => {
-    if (!user) return;
+    if (!user || loading) return;
 
     const q = query(collection(db, "projects"), where("userId", "==", user.uid));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -81,7 +91,7 @@ export default function Dashboard() {
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, loading]);
 
   // Handle Logout
   const handleLogout = async () => {
@@ -93,13 +103,13 @@ export default function Dashboard() {
   const handleSubmitProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectTitle || !projectDescription || !user) return;
-  
+
     try {
       await addDoc(collection(db, "projects"), {
         userId: user.uid,
         title: projectTitle,
         description: projectDescription,
-        status: "pending", // Default status
+        status: "pending",
         createdAt: new Date(),
       });
       setProjectTitle("");
@@ -148,7 +158,7 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
       <h1 className="text-3xl font-bold">Dashboard</h1>
-      <p className="mt-2 text-gray-700">Welcome, {user.email}!</p>
+      <p className="mt-2 text-gray-700">Welcome, {user.displayName || user.email}!</p>
 
       {/* Project Submission Form */}
       <form onSubmit={handleSubmitProject} className="mt-6 flex flex-col gap-3 w-80">
