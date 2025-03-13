@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
       updateData.associationToken = associationToken;
       updateData.tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-      const associationLink = `${process.env.NEXT_PUBLIC_BASE_URL || "https://678f-13-71-3-102.ngrok-free.app"}/associate-account?token=${associationToken}`;
+      const associationLink = `${process.env.NEXT_PUBLIC_BASE_URL || "https://c197-4-240-39-194.ngrok-free.app"}/associate-account?token=${associationToken}`;
       try {
         await sendAssociationEmail(email_address || "user@example.com", associationLink);
         console.log("📧 Association email sent to:", email_address, "Link:", associationLink);
