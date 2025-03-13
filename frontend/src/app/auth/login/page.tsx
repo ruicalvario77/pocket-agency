@@ -1,25 +1,43 @@
+// src/app/auth/login/page.tsx
 "use client";
 
 import { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../../firebase/firebaseConfig";
+import { signInWithEmailAndPassword, AuthError } from "firebase/auth";
+import { auth } from "@/app/firebase/firebaseConfig"; // Updated import
 import { useRouter } from "next/navigation";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push("/dashboard"); // Redirect to Dashboard after login
     } catch (err) {
-      setError("Invalid email or password.");
+      const authError = err as AuthError;
+      switch (authError.code) {
+        case "auth/wrong-password":
+          setError("Incorrect password.");
+          break;
+        case "auth/user-not-found":
+          setError("No account found with this email.");
+          break;
+        case "auth/invalid-email":
+          setError("Invalid email format.");
+          break;
+        default:
+          setError("Login failed. Please try again.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -35,6 +53,7 @@ export default function Login() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
+          disabled={loading}
         />
         <input
           type="password"
@@ -43,13 +62,21 @@ export default function Login() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
+          disabled={loading}
         />
-        <button type="submit" className="px-6 py-3 bg-blue-600 text-white rounded">
-          Login
+        <button
+          type="submit"
+          className="px-6 py-3 bg-blue-600 text-white rounded disabled:bg-gray-400"
+          disabled={loading}
+        >
+          {loading ? "Logging in..." : "Login"}
         </button>
       </form>
       <p className="mt-4">
-        Don't have an account? <a href="/auth/signup" className="text-blue-500">Sign Up</a>
+        Don&apos;t have an account?{" "}
+        <a href="/auth/signup" className="text-blue-500">
+          Sign Up
+        </a>
       </p>
     </div>
   );

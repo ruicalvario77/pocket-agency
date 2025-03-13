@@ -1,4 +1,27 @@
+// src/app/components/Navbar.tsx
+"use client";
+
+import { useState, useEffect } from "react";
+import { auth } from "@/app/firebase/firebaseConfig"; // Correct import
+import { signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
+
 export default function Navbar() {
+  const [user, setUser] = useState<any>(null); // Could type as firebase.User
+  const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push("/auth/login");
+  };
+
   return (
     <nav className="bg-white shadow-md py-4 fixed top-0 left-0 w-full z-50">
       <div className="max-w-6xl mx-auto flex justify-between items-center px-4">
@@ -10,12 +33,29 @@ export default function Navbar() {
           <a href="#services" className="text-gray-700 hover:text-blue-600 mx-2">
             Services
           </a>
+          <a href="/pricing" className="text-gray-700 hover:text-blue-600 mx-2">
+            Pricing
+          </a>
           <a href="#contact" className="text-gray-700 hover:text-blue-600 mx-2">
             Contact
           </a>
-          <a href="/auth/login" className="text-gray-700 hover:text-blue-600 mx-2">
-            Login
-          </a>
+          {user ? (
+            <>
+              <a href="/dashboard" className="text-gray-700 hover:text-blue-600 mx-2">
+                Dashboard
+              </a>
+              <button
+                onClick={handleLogout}
+                className="text-gray-700 hover:text-blue-600 mx-2"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <a href="/auth/login" className="text-gray-700 hover:text-blue-600 mx-2">
+              Login
+            </a>
+          )}
         </div>
       </div>
     </nav>
