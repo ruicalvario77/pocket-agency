@@ -16,7 +16,7 @@ import {
   doc,
   updateDoc,
   deleteDoc,
-  getDoc, // Added for onboarding check
+  getDoc,
 } from "firebase/firestore";
 
 interface Project {
@@ -28,19 +28,25 @@ interface Project {
   createdAt: Date | string;
 }
 
+interface Subscription {
+  plan: string;
+  status: string;
+}
+
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null); // Will refine type later
+  const [user, setUser] = useState<any>(null);
   const [projectTitle, setProjectTitle] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const db = getFirestore();
 
-  // Check authentication, subscription, and onboarding
+  // Check auth, subscription, and onboarding
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
       if (!currentUser) {
@@ -50,7 +56,7 @@ export default function Dashboard() {
 
       setUser(currentUser);
 
-      // Check for active subscription
+      // Check subscription
       const subQuery = query(
         collection(db, "subscriptions"),
         where("userId", "==", currentUser.uid),
@@ -63,7 +69,14 @@ export default function Dashboard() {
         return;
       }
 
-      // Check onboarding status
+      // Set subscription data
+      const subDoc = subSnapshot.docs[0];
+      setSubscription({
+        plan: subDoc.data().plan,
+        status: subDoc.data().status,
+      });
+
+      // Check onboarding
       const userDocRef = doc(db, "users", currentUser.uid);
       const userDoc = await getDoc(userDocRef);
       if (!userDoc.exists() || !userDoc.data()?.onboardingCompleted) {
@@ -77,7 +90,7 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, [router]);
 
-  // Fetch user's projects in real-time
+  // Fetch projects in real-time
   useEffect(() => {
     if (!user || loading) return;
 
@@ -158,7 +171,14 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
       <h1 className="text-3xl font-bold">Dashboard</h1>
-      <p className="mt-2 text-gray-700">Welcome, {user.displayName || user.email}!</p>
+      <p className="mt-2 text-gray-700">Welcome, {user.email}!</p>
+      {subscription && (
+        <div className="mt-4 text-center">
+          <p className="text-gray-600">
+            Subscription: <span className="font-semibold">{subscription.plan}</span> ({subscription.status})
+          </p>
+        </div>
+      )}
 
       {/* Project Submission Form */}
       <form onSubmit={handleSubmitProject} className="mt-6 flex flex-col gap-3 w-80">
