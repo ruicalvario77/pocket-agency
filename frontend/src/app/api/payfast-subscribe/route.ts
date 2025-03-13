@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   const merchantId = process.env.PAYFAST_MERCHANT_ID || "10037398";
   const merchantKey = process.env.PAYFAST_MERCHANT_KEY || "u4xw2uwnuthmh";
   const passphrase = process.env.PAYFAST_PASSPHRASE || "Ru1j3ssale77-77";
-  const notifyUrl = process.env.PAYFAST_NOTIFY_URL || "https://4588-20-192-21-53.ngrok-free.app/api/payfast-webhook";
+  const notifyUrl = process.env.PAYFAST_NOTIFY_URL || "https://678f-13-71-3-102.ngrok-free.app/api/payfast-webhook";
 
   const authHeader = req.headers.get("Authorization");
   let userId: string | null = null;
@@ -46,8 +46,8 @@ export async function POST(req: NextRequest) {
   const paymentData: [string, string][] = [
     ["merchant_id", merchantId],
     ["merchant_key", merchantKey],
-    ["return_url", "https://4588-20-192-21-53.ngrok-free.app/success"], // Updated
-    ["cancel_url", "https://4588-20-192-21-53.ngrok-free.app/pricing"],
+    ["return_url", "https://678f-13-71-3-102.ngrok-free.app/success"], // Updated
+    ["cancel_url", "https://678f-13-71-3-102.ngrok-free.app/pricing"],
     ["notify_url", notifyUrl],
     ["name_first", "Pocket Agency"],
     ["name_last", "Subscription"],
