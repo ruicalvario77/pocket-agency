@@ -1,4 +1,13 @@
+/* /src/app/globals.css */
 @import "tailwindcss";
+@import "tailwindcss/utilities";
+
+
+/* Custom animation */
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
 
 :root {
   --font-sans: var(--font-geist-sans);
