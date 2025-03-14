@@ -43,6 +43,7 @@ export default function Dashboard() {
   const [editedDescription, setEditedDescription] = useState("");
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showToast, setShowToast] = useState(false);
   const router = useRouter();
   const db = getFirestore();
 
@@ -101,11 +102,6 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, [user, loading]);
 
-  const handleLogout = async () => {
-    await signOut(auth);
-    router.push("/auth/login");
-  };
-
   const handleSubmitProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectTitle || !projectDescription || !user) return;
@@ -120,6 +116,8 @@ export default function Dashboard() {
       });
       setProjectTitle("");
       setProjectDescription("");
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
     } catch (error) {
       console.error("Error adding project:", error);
     }
@@ -158,18 +156,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-md p-4 flex justify-between items-center w-full">
-        <h1 className="text-2xl font-bold text-blue-600">Pocket Agency Dashboard</h1>
-        <button
-          onClick={handleLogout}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-        >
-          Logout
-        </button>
-      </header>
-
+    <div className="min-h-screen bg-gray-100 pt-16">
       {/* Main Content */}
       <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -279,6 +266,19 @@ export default function Dashboard() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-md flex items-center gap-2 animate-fade-in">
+          <span>✅ Project submitted successfully!</span>
+          <button
+            onClick={() => setShowToast(false)}
+            className="text-white hover:text-gray-200"
+          >
+            ✕
+          </button>
         </div>
       )}
     </div>
