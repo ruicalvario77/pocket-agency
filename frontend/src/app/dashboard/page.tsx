@@ -47,6 +47,13 @@ export default function Dashboard() {
   const router = useRouter();
   const db = getFirestore();
 
+  // Status color mapping
+  const statusColors: { [key: string]: string } = {
+    pending: "text-yellow-600 bg-yellow-100",
+    in_progress: "text-blue-600 bg-blue-100",
+    completed: "text-green-600 bg-green-100",
+  };
+
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
       if (!currentUser) {
@@ -157,7 +164,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-100 pt-16">
-      {/* Main Content */}
       <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-800">Welcome, {user.email}!</h2>
@@ -169,7 +175,6 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Project Submission */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Submit a New Project</h3>
           <form onSubmit={handleSubmitProject} className="flex flex-col gap-4">
@@ -197,7 +202,6 @@ export default function Dashboard() {
           </form>
         </div>
 
-        {/* Projects List */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Your Projects</h3>
           {projects.length === 0 ? (
@@ -211,8 +215,15 @@ export default function Dashboard() {
                 >
                   <h4 className="font-medium text-gray-800">{project.title}</h4>
                   <p className="text-gray-600 mt-1">{project.description}</p>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Status: <span className="capitalize">{project.status || "pending"}</span>
+                  <p className="text-sm mt-2">
+                    Status:{" "}
+                    <span
+                      className={`capitalize px-2 py-1 rounded-full text-xs ${
+                        statusColors[project.status] || "text-gray-500 bg-gray-200"
+                      }`}
+                    >
+                      {project.status || "pending"}
+                    </span>
                   </p>
                   <div className="mt-3 flex gap-2">
                     <button
@@ -235,7 +246,6 @@ export default function Dashboard() {
         </div>
       </main>
 
-      {/* Edit Modal */}
       {editingProject && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-lg p-6 shadow-lg w-full max-w-md">
@@ -269,7 +279,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Toast Notification */}
       {showToast && (
         <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-md flex items-center gap-2 animate-fade-in">
           <span>✅ Project submitted successfully!</span>
