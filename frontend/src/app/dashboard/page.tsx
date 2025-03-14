@@ -41,13 +41,13 @@ export default function Dashboard() {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null); // New state for deletion
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
   const router = useRouter();
   const db = getFirestore();
 
-  // Status color mapping
   const statusColors: { [key: string]: string } = {
     pending: "text-yellow-600 bg-yellow-100",
     in_progress: "text-blue-600 bg-blue-100",
@@ -130,9 +130,15 @@ export default function Dashboard() {
     }
   };
 
-  const handleDeleteProject = async (id: string) => {
+  const handleDeleteProject = async (project: Project) => {
+    setDeletingProject(project); // Show confirmation modal
+  };
+
+  const confirmDeleteProject = async () => {
+    if (!deletingProject) return;
     try {
-      await deleteDoc(doc(db, "projects", id));
+      await deleteDoc(doc(db, "projects", deletingProject.id));
+      setDeletingProject(null); // Close modal
     } catch (error) {
       console.error("Error deleting project:", error);
     }
@@ -233,7 +239,7 @@ export default function Dashboard() {
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDeleteProject(project.id)}
+                      onClick={() => handleDeleteProject(project)}
                       className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
                     >
                       Delete
@@ -246,6 +252,7 @@ export default function Dashboard() {
         </div>
       </main>
 
+      {/* Edit Modal */}
       {editingProject && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-lg p-6 shadow-lg w-full max-w-md">
@@ -279,6 +286,33 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Deletion Confirmation Modal */}
+      {deletingProject && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg p-6 shadow-lg w-full max-w-md">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Confirm Deletion</h2>
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to delete "<strong>{deletingProject.title}</strong>"? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setDeletingProject(null)}
+                className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteProject}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
       {showToast && (
         <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-md flex items-center gap-2 animate-fade-in">
           <span>✅ Project submitted successfully!</span>
