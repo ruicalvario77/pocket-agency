@@ -1,28 +1,27 @@
 // src/app/utils/email.ts
 import nodemailer from "nodemailer";
 
-export async function sendAssociationEmail(to: string, associationLink: string) {
+export async function sendAssociationEmail(to: string, message: string, subject = "Associate Your Pocket Agency Account") {
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: process.env.EMAIL_HOST, // smtp.gmail.com
+    port: Number(process.env.EMAIL_PORT), // 465
+    secure: true, // Use SSL
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+      user: process.env.EMAIL_USER, // ruic7777@gmail.com
+      pass: process.env.EMAIL_PASS, // Gmail App Password
     },
   });
 
   const mailOptions = {
-    from: process.env.EMAIL_USER,
+    from: process.env.EMAIL_FROM || "ruic7777@gmail.com",
     to,
-    subject: "Associate Your Pocket Agency Subscription",
-    text: `Please click the link to associate your account: ${associationLink}`,
-    html: `<p>Please click the link to associate your account: <a href="${associationLink}">${associationLink}</a></p>`,
+    subject,
+    text: message,
   };
 
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log("Association email sent successfully to:", to);
-  } catch (error) {
-    console.error("Failed to send association email:", error);
-    throw new Error("Failed to send association email");
-  }
+  await transporter.sendMail(mailOptions);
+}
+
+export async function sendEmail(to: string, subject: string, message: string) {
+  return sendAssociationEmail(to, message, subject);
 }
