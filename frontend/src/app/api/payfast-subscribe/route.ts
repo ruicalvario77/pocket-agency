@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 const nodeCrypto = require("crypto") as typeof import("crypto");
 import { auth, db } from "@/app/firebase/admin";
-import { sendAssociationEmail } from "@/app/utils/email"; // Import email utility
+import { sendEmail } from "@/app/utils/email"; // Using standard sendEmail for consistency
 
 export async function POST(req: NextRequest) {
   console.log("🚀 PayFast Subscription Request Received");
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Email is required for unauthenticated users" }, { status: 400 });
   }
 
-  const amount = plan === "basic" ? "199.00" : "399.00";
+  const amount = plan === "basic" ? "3000.00" : "8000.00"; // Updated to ZAR
   const itemName = `Pocket Agency ${plan.charAt(0).toUpperCase() + plan.slice(1)} Subscription`;
   const finalEmail = userEmail || email || "temp@example.com"; // Fallback for safety
 
@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
     email_address: finalEmail,
     createdAt: new Date().toISOString(),
     temp: !userId, // Flag for unauthenticated
+    payfastSubscriptionId: null, // Will be set by webhook
   });
   const subscriptionId = subscriptionRef.id;
 
@@ -67,13 +68,33 @@ export async function POST(req: NextRequest) {
     ["email_confirmation", "0"],
     ["subscription_type", "1"],
     ["recurring_amount", amount],
-    ["frequency", "3"],
-    ["cycles", "0"],
+    ["frequency", "3"], // Monthly (3 = 30 days)
+    ["cycles", "0"], // Infinite cycles
   ];
 
   const signature = generateSignature(paymentData, passphrase);
 
   console.log("✅ Payment Data Prepared:", { paymentData, signature });
+
+  // Send association email for unauthenticated users
+  if (!userId) {
+    const associationToken = nodeCrypto.randomBytes(16).toString("hex");
+    await db.collection("subscriptions").doc(subscriptionId).update({
+      associationToken,
+      tokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    });
+    const associationLink = `${process.env.NEXT_PUBLIC_BASE_URL || "https://ecc6-13-71-3-98.ngrok-free.app"}/associate-account?token=${associationToken}`;
+    try {
+      await sendEmail(
+        finalEmail,
+        "Associate Your Pocket Agency Account",
+        `Please associate your account using this link: ${associationLink}`
+      );
+      console.log("📧 Association email sent to:", finalEmail, "Link:", associationLink);
+    } catch (error) {
+      console.error("Failed to send association email (continuing anyway):", error);
+    }
+  }
 
   return NextResponse.json({ paymentData, signature }, { status: 200 });
 }
