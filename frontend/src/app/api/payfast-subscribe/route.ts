@@ -6,7 +6,7 @@ import { sendAssociationEmail } from "@/app/utils/email"; // Import email utilit
 
 export async function POST(req: NextRequest) {
   console.log("🚀 PayFast Subscription Request Received");
-  const notifyUrl = process.env.PAYFAST_NOTIFY_URL || "https://4fbf-13-71-3-101.ngrok-free.app/api/payfast-webhook";
+  const notifyUrl = process.env.PAYFAST_NOTIFY_URL || "https://ecc6-13-71-3-98.ngrok-free.app/api/payfast-webhook";
 
   const merchantId = process.env.PAYFAST_MERCHANT_ID || "10037398";
   const merchantKey = process.env.PAYFAST_MERCHANT_KEY || "u4xw2uwnuthmh";
@@ -54,8 +54,8 @@ export async function POST(req: NextRequest) {
   const paymentData: [string, string][] = [
     ["merchant_id", merchantId],
     ["merchant_key", merchantKey],
-    ["return_url", "https://4fbf-13-71-3-101.ngrok-free.app/success"],
-    ["cancel_url", "https://4fbf-13-71-3-101.ngrok-free.app/pricing"],
+    ["return_url", "https://ecc6-13-71-3-98.ngrok-free.app/success"],
+    ["cancel_url", "https://ecc6-13-71-3-98.ngrok-free.app/pricing"],
     ["notify_url", notifyUrl],
     ["name_first", "Pocket Agency"],
     ["name_last", "Subscription"],
