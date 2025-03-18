@@ -84,6 +84,7 @@ export async function POST(req: NextRequest) {
       updatedAt: new Date().toISOString(),
       temp: true,
       retryAttempts: 0,
+      plan: subscriptionData.plan || "basic", // Default to "basic" if plan is not set
     };
 
     if (!subscriptionData.userId) {
@@ -184,7 +185,7 @@ export async function POST(req: NextRequest) {
           const sortedParams = Object.keys(params)
             .sort()
             .map(key => `${key}=${encodeURIComponent(params[key])}`)
-            .join("&"); // Fixed typo (removed ×)
+            .join("&");
           const cancelSignatureString = sortedParams + `&passphrase=${passphrase}`;
           const cancelSignature = nodeCrypto
             .createHash("md5")
@@ -196,7 +197,7 @@ export async function POST(req: NextRequest) {
           console.log("Cancel signature string:", cancelSignatureString);
           console.log("Cancel signature:", cancelSignature);
 
-          const cancelResponse = await fetch(`https://api.payfast.co.za/subscriptions/${token}/cancel`, { // Changed to production URL for testing
+          const cancelResponse = await fetch(`https://api.payfast.co.za/subscriptions/${token}/cancel`, {
             method: "PUT",
             headers: {
               "merchant-id": process.env.PAYFAST_MERCHANT_ID || "10037398",
@@ -205,7 +206,7 @@ export async function POST(req: NextRequest) {
               "signature": cancelSignature,
               "Content-Type": "application/x-www-form-urlencoded",
             },
-            body: new URLSearchParams(params).toString(), // Properly encode body
+            body: new URLSearchParams(params).toString(),
           });
 
           const responseText = await cancelResponse.text();
