@@ -9,7 +9,7 @@ import { collection, query, where, getDocs, doc, updateDoc, setDoc } from "fireb
 export default function AssociateAccount() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState(""); // New field
+  const [fullName, setFullName] = useState("");
   const [isNewUser, setIsNewUser] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -30,11 +30,10 @@ export default function AssociateAccount() {
         if (!fullName) throw new Error("Full name is required for new users.");
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         userId = userCredential.user.uid;
-        // Store user details
         await setDoc(doc(db, "users", userId), {
           email,
           fullName,
-          onboardingCompleted: false, // Set to false initially
+          onboardingCompleted: false,
         }, { merge: true });
       } else {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -44,8 +43,8 @@ export default function AssociateAccount() {
       console.log("Token from URL:", token);
       const q = query(
         collection(db, "subscriptions"),
-        where("associationToken", "==", token),
-        where("temp", "==", true)
+        where("associationToken", "==", token)
+        // Removed: where("temp", "==", true)
       );
       const querySnapshot = await getDocs(q);
 
