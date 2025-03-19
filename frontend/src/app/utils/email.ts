@@ -3,12 +3,12 @@ import nodemailer from "nodemailer";
 
 export async function sendAssociationEmail(to: string, message: string, subject = "Associate Your Pocket Agency Account") {
   const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST, // smtp.gmail.com
-    port: Number(process.env.EMAIL_PORT), // 465
-    secure: true, // Use SSL
+    host: process.env.EMAIL_HOST, 
+    port: Number(process.env.EMAIL_PORT), 
+    secure: true, 
     auth: {
-      user: process.env.EMAIL_USER, // ruic7777@gmail.com
-      pass: process.env.EMAIL_PASS, // Gmail App Password
+      user: process.env.EMAIL_USER, 
+      pass: process.env.EMAIL_PASS, 
     },
   });
 

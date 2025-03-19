@@ -86,7 +86,7 @@ const PricingPage = () => {
           {/* Basic Plan */}
           <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition">
             <h2 className="text-2xl font-semibold text-blue-600 mb-4">Basic Plan</h2>
-            <p className="text-3xl font-bold text-gray-800 mb-2">R199</p>
+            <p className="text-3xl font-bold text-gray-800 mb-2">R3000</p>
             <p className="text-gray-600 mb-6">per month</p>
             <ul className="text-gray-600 mb-6 space-y-2">
               <li>✓ Custom Website Design</li>
@@ -107,7 +107,7 @@ const PricingPage = () => {
           {/* Pro Plan */}
           <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition">
             <h2 className="text-2xl font-semibold text-blue-600 mb-4">Pro Plan</h2>
-            <p className="text-3xl font-bold text-gray-800 mb-2">R399</p>
+            <p className="text-3xl font-bold text-gray-800 mb-2">R8000</p>
             <p className="text-gray-600 mb-6">per month</p>
             <ul className="text-gray-600 mb-6 space-y-2">
               <li>✓ Advanced Website Design</li>
