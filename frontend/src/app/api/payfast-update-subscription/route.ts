@@ -7,7 +7,7 @@ const nodeCrypto = require("crypto") as typeof import("crypto");
 import { sendEmail } from "@/app/utils/email";
 
 export async function POST(req: NextRequest) {
-  const { newPlan }: { newPlan: PlanType } = await req.json(); // Explicitly type newPlan
+  const { newPlan }: { newPlan: PlanType } = await req.json();
   if (!Object.keys(PLANS).includes(newPlan)) {
     return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
   }
@@ -26,9 +26,8 @@ export async function POST(req: NextRequest) {
   }
 
   const subscriptionDoc = subscriptionSnap.docs[0];
-  const subscriptionId = subscriptionDoc.id;
   const currentData = subscriptionDoc.data();
-  const currentPlan = (currentData.plan || "basic") as PlanType; // Ensure type safety
+  const currentPlan = (currentData.plan || "basic") as PlanType;
   const currentPrice = PLANS[currentPlan].price;
   const newPrice = PLANS[newPlan].price;
   const today = new Date();
@@ -43,43 +42,67 @@ export async function POST(req: NextRequest) {
     const proratedCharge = ((newPrice - currentPrice) * daysRemaining) / daysInMonth;
     updateData.proratedCharge = proratedCharge;
 
-    const timestamp = today.toISOString();
-    const params: { [key: string]: string } = {
-      "merchant-id": process.env.PAYFAST_MERCHANT_ID || "10037398",
-      "version": "v1",
-      "timestamp": timestamp,
-      "amount": (newPrice * 100).toString(), // PayFast uses cents
+    const timestamp = today.toISOString().replace(/\.\d{3}Z$/, "+02:00");
+    const merchantId = process.env.PAYFAST_MERCHANT_ID || "10037398";
+
+    // Body parameters
+    const bodyParams: { [key: string]: string } = {
+      "amount": (newPrice * 100).toString(),
       "prorate": "true",
     };
-    const sortedParams = Object.keys(params)
+
+    // Header parameters (excluding signature)
+    const headerParams: { [key: string]: string } = {
+      "merchant-id": merchantId,
+      "timestamp": timestamp,
+      "version": "v1",
+    };
+
+    // Signature based on body parameters only
+    const signatureParams = Object.keys(bodyParams)
       .sort()
-      .map(key => `${key}=${encodeURIComponent(params[key])}`)
+      .map(key => `${key}=${bodyParams[key]}`) // Use raw values
       .join("&");
-    const signatureString = sortedParams + `&passphrase=${passphrase}`;
+    const signatureString = signatureParams + `&passphrase=${passphrase}`;
     const signature = nodeCrypto
       .createHash("md5")
       .update(signatureString)
       .digest("hex")
       .toLowerCase();
 
+    // Manual log to avoid serialization issues
+    const logSignatureString = `${signatureParams}&passphrase=${passphrase}`;
+    console.log("Updating PayFast subscription with body params:", bodyParams);
+    console.log("Header params:", headerParams);
+    console.log("Signature string (logged):", logSignatureString);
+    console.log("Generated signature:", signature);
+    console.log("Using subscription token:", currentData.payfastToken);
+
     try {
-      const response = await fetch(`https://api.payfast.co.za/subscriptions/${currentData.payfastToken}/update`, {
-        method: "PUT",
-        headers: {
-          "merchant-id": process.env.PAYFAST_MERCHANT_ID || "10037398",
-          "version": "v1",
-          "timestamp": timestamp,
-          "signature": signature,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams(params).toString(),
-      });
+      const response = await fetch(
+        `https://api.payfast.co.za/subscriptions/${currentData.payfastToken}/update?testing=true`,
+        {
+          method: "PATCH",
+          headers: {
+            "merchant-id": merchantId,
+            "version": "v1",
+            "timestamp": timestamp,
+            "signature": signature,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams(bodyParams).toString(),
+        }
+      );
 
       const responseText = await response.text();
+      console.log("PayFast API response status:", response.status);
+      console.log("PayFast API response text:", responseText);
+
       if (!response.ok) {
         console.error("Failed to update PayFast subscription:", responseText);
-        return NextResponse.json({ error: "Failed to update subscription" }, { status: 500 });
+        return NextResponse.json({ error: "Failed to update subscription", details: responseText }, { status: 500 });
       }
+
       console.log("PayFast subscription updated for upgrade:", responseText);
 
       await subscriptionDoc.ref.update(updateData);
@@ -91,52 +114,82 @@ export async function POST(req: NextRequest) {
         A prorated charge of R${proratedCharge.toFixed(2)} has been applied for the remaining ${daysRemaining} days of this billing cycle.
         Starting next month, you will be billed R${newPrice}/month.`
       );
-    } catch (error) {
-      console.error("Error updating PayFast subscription:", error);
-      return NextResponse.json({ error: "Error updating subscription" }, { status: 500 });
+    } catch (error: unknown) {
+      let errorMessage = "Unknown error occurred";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      }
+      console.error("Error updating PayFast subscription:", errorMessage);
+      return NextResponse.json({ error: "Error updating subscription", details: errorMessage }, { status: 500 });
     }
   } else if (newPrice < currentPrice) {
     // Downgrade: Effective next billing cycle
     const nextBillingDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
     updateData.effectiveDate = nextBillingDate.toISOString();
 
-    const timestamp = today.toISOString();
-    const params: { [key: string]: string } = {
-      "merchant-id": process.env.PAYFAST_MERCHANT_ID || "10037398",
-      "version": "v1",
-      "timestamp": timestamp,
+    const timestamp = today.toISOString().replace(/\.\d{3}Z$/, "+02:00");
+    const merchantId = process.env.PAYFAST_MERCHANT_ID || "10037398";
+
+    // Body parameters
+    const bodyParams: { [key: string]: string } = {
       "amount": (newPrice * 100).toString(),
-      "effective_date": nextBillingDate.toISOString().split("T")[0], // Format: YYYY-MM-DD
+      "effective_date": nextBillingDate.toISOString().split("T")[0],
     };
-    const sortedParams = Object.keys(params)
+
+    // Header parameters (excluding signature)
+    const headerParams: { [key: string]: string } = {
+      "merchant-id": merchantId,
+      "timestamp": timestamp,
+      "version": "v1",
+    };
+
+    // Signature based on body parameters only
+    const signatureParams = Object.keys(bodyParams)
       .sort()
-      .map(key => `${key}=${encodeURIComponent(params[key])}`)
+      .map(key => `${key}=${bodyParams[key]}`) // Use raw values
       .join("&");
-    const signatureString = sortedParams + `&passphrase=${passphrase}`;
+    const signatureString = signatureParams + `&passphrase=${passphrase}`;
     const signature = nodeCrypto
       .createHash("md5")
       .update(signatureString)
       .digest("hex")
       .toLowerCase();
 
+    // Manual log to avoid serialization issues
+    const logSignatureString = `${signatureParams}&passphrase=${passphrase}`;
+    console.log("Updating PayFast subscription with body params:", bodyParams);
+    console.log("Header params:", headerParams);
+    console.log("Signature string (logged):", logSignatureString);
+    console.log("Generated signature:", signature);
+    console.log("Using subscription token:", currentData.payfastToken);
+
     try {
-      const response = await fetch(`https://api.payfast.co.za/subscriptions/${currentData.payfastToken}/update`, {
-        method: "PUT",
-        headers: {
-          "merchant-id": process.env.PAYFAST_MERCHANT_ID || "10037398",
-          "version": "v1",
-          "timestamp": timestamp,
-          "signature": signature,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams(params).toString(),
-      });
+      const response = await fetch(
+        `https://api.payfast.co.za/subscriptions/${currentData.payfastToken}/update?testing=true`,
+        {
+          method: "PATCH",
+          headers: {
+            "merchant-id": merchantId,
+            "version": "v1",
+            "timestamp": timestamp,
+            "signature": signature,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams(bodyParams).toString(),
+        }
+      );
 
       const responseText = await response.text();
+      console.log("PayFast API response status:", response.status);
+      console.log("PayFast API response text:", responseText);
+
       if (!response.ok) {
         console.error("Failed to update PayFast subscription:", responseText);
-        return NextResponse.json({ error: "Failed to update subscription" }, { status: 500 });
+        return NextResponse.json({ error: "Failed to update subscription", details: responseText }, { status: 500 });
       }
+
       console.log("PayFast subscription updated for downgrade:", responseText);
 
       await subscriptionDoc.ref.update(updateData);
@@ -148,9 +201,15 @@ export async function POST(req: NextRequest) {
         You will continue to enjoy ${PLANS[currentPlan].name} benefits until then.
         Starting next month, you will be billed R${newPrice}/month.`
       );
-    } catch (error) {
-      console.error("Error updating PayFast subscription:", error);
-      return NextResponse.json({ error: "Error updating subscription" }, { status: 500 });
+    } catch (error: unknown) {
+      let errorMessage = "Unknown error occurred";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      }
+      console.error("Error updating PayFast subscription:", errorMessage);
+      return NextResponse.json({ error: "Error updating subscription", details: errorMessage }, { status: 500 });
     }
   } else {
     return NextResponse.json({ error: "No plan change required" }, { status: 400 });
