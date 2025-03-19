@@ -84,6 +84,7 @@ export async function POST(req: NextRequest) {
       updatedAt: new Date().toISOString(),
       temp: true,
       retryAttempts: 0,
+      plan: subscriptionData.plan || "basic", // Default to "basic" if plan is not set
     };
 
     if (!subscriptionData.userId) {
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
       updateData.associationToken = associationToken;
       updateData.tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-      const associationLink = `${process.env.NEXT_PUBLIC_BASE_URL || "https://ecc6-13-71-3-98.ngrok-free.app"}/associate-account?token=${associationToken}`;
+      const associationLink = `${process.env.NEXT_PUBLIC_BASE_URL || "https://61d4-4-240-39-199.ngrok-free.app"}/associate-account?token=${associationToken}`;
       try {
         await sendEmail(
           email_address || "user@example.com",
@@ -123,7 +124,7 @@ export async function POST(req: NextRequest) {
       const failureMessage = `
         Dear Customer,
         Your initial subscription payment failed.
-        Please retry by updating your payment method at ${process.env.NEXT_PUBLIC_BASE_URL || "https://ecc6-13-71-3-98.ngrok-free.app"}/pricing.
+        Please retry by updating your payment method at ${process.env.NEXT_PUBLIC_BASE_URL || "https://61d4-4-240-39-199.ngrok-free.app"}/pricing.
         If you need assistance, contact us at support@pocketagency.com.
       `;
       try {
@@ -150,7 +151,7 @@ export async function POST(req: NextRequest) {
         Dear Customer,
         We attempted to process your subscription payment but it failed.
         We will retry again in 24 hours. Please ensure your payment method is up to date.
-        Update your payment method at ${process.env.NEXT_PUBLIC_BASE_URL || "https://ecc6-13-71-3-98.ngrok-free.app"}/billing.
+        Update your payment method at ${process.env.NEXT_PUBLIC_BASE_URL || "https://61d4-4-240-39-199.ngrok-free.app"}/billing.
       `;
       try {
         await sendEmail(
@@ -184,7 +185,7 @@ export async function POST(req: NextRequest) {
           const sortedParams = Object.keys(params)
             .sort()
             .map(key => `${key}=${encodeURIComponent(params[key])}`)
-            .join("&"); // Fixed typo (removed ×)
+            .join("&");
           const cancelSignatureString = sortedParams + `&passphrase=${passphrase}`;
           const cancelSignature = nodeCrypto
             .createHash("md5")
@@ -196,7 +197,7 @@ export async function POST(req: NextRequest) {
           console.log("Cancel signature string:", cancelSignatureString);
           console.log("Cancel signature:", cancelSignature);
 
-          const cancelResponse = await fetch(`https://api.payfast.co.za/subscriptions/${token}/cancel`, { // Changed to production URL for testing
+          const cancelResponse = await fetch(`https://api.payfast.co.za/subscriptions/${token}/cancel`, {
             method: "PUT",
             headers: {
               "merchant-id": process.env.PAYFAST_MERCHANT_ID || "10037398",
@@ -205,7 +206,7 @@ export async function POST(req: NextRequest) {
               "signature": cancelSignature,
               "Content-Type": "application/x-www-form-urlencoded",
             },
-            body: new URLSearchParams(params).toString(), // Properly encode body
+            body: new URLSearchParams(params).toString(),
           });
 
           const responseText = await cancelResponse.text();
@@ -225,7 +226,7 @@ export async function POST(req: NextRequest) {
       const cancellationMessage = `
         Dear Customer,
         Your Pocket Agency subscription has been cancelled due to repeated payment failures.
-        Please resubscribe at ${process.env.NEXT_PUBLIC_BASE_URL || "https://ecc6-13-71-3-98.ngrok-free.app"}/pricing to continue using our services.
+        Please resubscribe at ${process.env.NEXT_PUBLIC_BASE_URL || "https://61d4-4-240-39-199.ngrok-free.app"}/pricing to continue using our services.
       `;
       try {
         await sendEmail(
