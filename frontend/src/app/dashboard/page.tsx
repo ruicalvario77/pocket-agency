@@ -1,4 +1,3 @@
-// src/app/dashboard/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -17,6 +16,7 @@ import {
   updateDoc,
   deleteDoc,
   getDoc,
+  Timestamp,
 } from "firebase/firestore";
 
 interface Project {
@@ -25,7 +25,7 @@ interface Project {
   title: string;
   description: string;
   status: string;
-  createdAt: Date | string;
+  createdAt: Date;
 }
 
 interface Subscription {
@@ -41,7 +41,7 @@ export default function Dashboard() {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
-  const [deletingProject, setDeletingProject] = useState<Project | null>(null); // New state for deletion
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
@@ -52,6 +52,12 @@ export default function Dashboard() {
     pending: "text-yellow-600 bg-yellow-100",
     in_progress: "text-blue-600 bg-blue-100",
     completed: "text-green-600 bg-green-100",
+  };
+
+  const columns = {
+    pending: { title: "Pending", items: projects.filter(p => p.status === "pending") },
+    in_progress: { title: "In Progress", items: projects.filter(p => p.status === "in_progress") },
+    completed: { title: "Completed", items: projects.filter(p => p.status === "completed") },
   };
 
   useEffect(() => {
@@ -99,10 +105,17 @@ export default function Dashboard() {
 
     const q = query(collection(db, "projects"), where("userId", "==", user.uid));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const projectList = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Project[];
+      const projectList = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        const createdAt = data.createdAt instanceof Timestamp
+          ? data.createdAt.toDate()
+          : new Date(data.createdAt);
+        return {
+          id: doc.id,
+          ...data,
+          createdAt,
+        };
+      }) as Project[];
       setProjects(projectList);
     });
 
@@ -119,7 +132,7 @@ export default function Dashboard() {
         title: projectTitle,
         description: projectDescription,
         status: "pending",
-        createdAt: new Date(),
+        createdAt: Timestamp.now(),
       });
       setProjectTitle("");
       setProjectDescription("");
@@ -130,21 +143,23 @@ export default function Dashboard() {
     }
   };
 
-  const handleDeleteProject = async (project: Project) => {
-    setDeletingProject(project); // Show confirmation modal
+  const handleDeleteProject = (project: Project) => {
+    console.log("Opening delete modal for project:", project);
+    setDeletingProject(project);
   };
 
   const confirmDeleteProject = async () => {
     if (!deletingProject) return;
     try {
       await deleteDoc(doc(db, "projects", deletingProject.id));
-      setDeletingProject(null); // Close modal
+      setDeletingProject(null);
     } catch (error) {
       console.error("Error deleting project:", error);
     }
   };
 
   const handleEditProject = (project: Project) => {
+    console.log("Opening edit modal for project:", project);
     setEditingProject(project);
     setEditedTitle(project.title);
     setEditedDescription(project.description);
@@ -170,7 +185,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-100 pt-16">
-      <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-800">Welcome, {user.email}!</h2>
           {subscription && (
@@ -213,41 +228,51 @@ export default function Dashboard() {
           {projects.length === 0 ? (
             <p className="text-gray-600">No projects submitted yet.</p>
           ) : (
-            <ul className="space-y-4">
-              {projects.map((project) => (
-                <li
-                  key={project.id}
-                  className="border rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition"
-                >
-                  <h4 className="font-medium text-gray-800">{project.title}</h4>
-                  <p className="text-gray-600 mt-1">{project.description}</p>
-                  <p className="text-sm mt-2">
-                    Status:{" "}
-                    <span
-                      className={`capitalize px-2 py-1 rounded-full text-xs ${
-                        statusColors[project.status] || "text-gray-500 bg-gray-200"
-                      }`}
-                    >
-                      {project.status || "pending"}
-                    </span>
-                  </p>
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      onClick={() => handleEditProject(project)}
-                      className="px-3 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeleteProject(project)}
-                      className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                    >
-                      Delete
-                    </button>
+            <div className="flex space-x-4 overflow-x-auto pb-4">
+              {Object.entries(columns).map(([status, column]) => (
+                <div key={status} className="flex-1 min-w-[300px]">
+                  <h4
+                    className={`text-lg font-semibold mb-4 ${
+                      status === "pending"
+                        ? "text-yellow-600"
+                        : status === "in_progress"
+                        ? "text-blue-600"
+                        : "text-green-600"
+                    }`}
+                  >
+                    {column.title} ({column.items.length})
+                  </h4>
+                  <div className="bg-gray-100 rounded-lg p-4 min-h-[200px]">
+                    {column.items.map((project) => (
+                      <div
+                        key={project.id}
+                        className="bg-white rounded-lg p-4 mb-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                      >
+                        <h4 className="text-md font-semibold text-gray-800">{project.title}</h4>
+                        <p className="text-gray-600 mt-1 line-clamp-2">{project.description}</p>
+                        <p className="text-sm text-gray-500 mt-2">
+                          Created: {project.createdAt.toLocaleDateString()}
+                        </p>
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            onClick={() => handleEditProject(project)}
+                            className="px-3 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProject(project)}
+                            className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </div>
       </main>
