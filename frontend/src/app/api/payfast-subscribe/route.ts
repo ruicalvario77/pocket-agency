@@ -6,7 +6,7 @@ import { sendEmail } from "@/app/utils/email"; // Using standard sendEmail for c
 
 export async function POST(req: NextRequest) {
   console.log("🚀 PayFast Subscription Request Received");
-  const notifyUrl = process.env.PAYFAST_NOTIFY_URL || "https://61d4-4-240-39-199.ngrok-free.app/api/payfast-webhook";
+  const notifyUrl = process.env.PAYFAST_NOTIFY_URL || "https://324f-20-192-21-49.ngrok-free.app/api/payfast-webhook";
 
   const merchantId = process.env.PAYFAST_MERCHANT_ID || "10037398";
   const merchantKey = process.env.PAYFAST_MERCHANT_KEY || "u4xw2uwnuthmh";
@@ -55,8 +55,8 @@ export async function POST(req: NextRequest) {
   const paymentData: [string, string][] = [
     ["merchant_id", merchantId],
     ["merchant_key", merchantKey],
-    ["return_url", "https://61d4-4-240-39-199.ngrok-free.app/success"],
-    ["cancel_url", "https://61d4-4-240-39-199.ngrok-free.app/pricing"],
+    ["return_url", "https://324f-20-192-21-49.ngrok-free.app/success"],
+    ["cancel_url", "https://324f-20-192-21-49.ngrok-free.app/pricing"],
     ["notify_url", notifyUrl],
     ["name_first", "Pocket Agency"],
     ["name_last", "Subscription"],
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
       associationToken,
       tokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     });
-    const associationLink = `${process.env.NEXT_PUBLIC_BASE_URL || "https://61d4-4-240-39-199.ngrok-free.app"}/associate-account?token=${associationToken}`;
+    const associationLink = `${process.env.NEXT_PUBLIC_BASE_URL || "https://324f-20-192-21-49.ngrok-free.app"}/associate-account?token=${associationToken}`;
     try {
       await sendEmail(
         finalEmail,
