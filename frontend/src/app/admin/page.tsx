@@ -6,7 +6,24 @@ import { auth, db } from "@/app/firebase/firebaseConfig";
 import { collection, onSnapshot, updateDoc, doc, getDoc, Timestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import React from "react";
-import { FaClock, FaHourglassHalf, FaCheckCircle } from "react-icons/fa";
+import { FaClock, FaHourglassHalf, FaCheckCircle, FaGripVertical } from "react-icons/fa";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  useDroppable,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface Project {
   id: string;
@@ -14,13 +31,100 @@ interface Project {
   title: string;
   description: string;
   status: string;
-  createdAt: Date | string | Timestamp;
+  createdAt: Date;
 }
+
+const SortableProject = ({ project }: { project: Project }) => {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: project.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const statusStyles: { [key: string]: string } = {
+    pending: "bg-yellow-100 text-yellow-800",
+    in_progress: "bg-blue-100 text-blue-800",
+    completed: "bg-green-100 text-green-800",
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="bg-white rounded-lg p-4 mb-4 shadow-sm hover:shadow-md transition-shadow duration-200 flex items-start"
+    >
+      <div
+        {...listeners}
+        {...attributes}
+        className="cursor-grab mr-3 text-gray-400 hover:text-gray-600"
+      >
+        <FaGripVertical />
+      </div>
+      <div className="flex-1">
+        <div className="flex items-center justify-between">
+          <h4 className="text-md font-semibold text-gray-800">{project.title}</h4>
+          <span
+            className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
+              statusStyles[project.status] || "bg-gray-100 text-gray-800"
+            }`}
+          >
+            {project.status === "pending" ? "Pending" : project.status === "in_progress" ? "In Progress" : "Completed"}
+          </span>
+        </div>
+        <p className="text-gray-600 mt-1 line-clamp-2">{project.description}</p>
+        <p className="text-sm text-gray-500 mt-2">User ID: {project.userId}</p>
+        <p className="text-sm text-gray-500">
+          Created: {project.createdAt instanceof Date && !isNaN(project.createdAt.getTime())
+            ? project.createdAt.toLocaleDateString()
+            : "Unknown Date"}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+const DroppableColumn = ({
+  status,
+  title,
+  items,
+}: {
+  status: string;
+  title: string;
+  items: Project[];
+}) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: status,
+  });
+
+  return (
+    <div ref={setNodeRef} className={`flex-1 min-w-[300px] ${isOver ? "bg-gray-200" : "bg-gray-100"} rounded-lg p-4 min-h-[200px]`}>
+      <h3
+        className={`text-lg font-semibold mb-4 ${
+          status === "pending" ? "text-yellow-600" : status === "in_progress" ? "text-blue-600" : "text-green-600"
+        }`}
+      >
+        {title} ({items.length})
+      </h3>
+      <SortableContext
+        id={status}
+        items={items.map(item => item.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        {items.length === 0 ? (
+          <p className="text-gray-500 text-center">No projects in this status.</p>
+        ) : (
+          items.map((project) => (
+            <SortableProject key={project.id} project={project} />
+          ))
+        )}
+      </SortableContext>
+    </div>
+  );
+};
 
 export default function AdminDashboard() {
   const [user, loadingAuth] = useAuthState(auth);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [sortOrder, setSortOrder] = useState<string>("newest");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -39,6 +143,13 @@ export default function AdminDashboard() {
     in_progress: <FaHourglassHalf className="inline-block mr-1" />,
     completed: <FaCheckCircle className="inline-block mr-1" />,
   };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     if (loadingAuth) return;
@@ -62,16 +173,16 @@ export default function AdminDashboard() {
 
           const projectsRef = collection(db, "projects");
           const unsubscribe = onSnapshot(projectsRef, (snap) => {
+            console.log("onSnapshot triggered with", snap.docs.length, "documents");
             const projectList = snap.docs.map((doc) => {
               const data = doc.data();
-              // Convert createdAt to Date
               let createdAt: Date;
               if (data.createdAt instanceof Timestamp) {
                 createdAt = data.createdAt.toDate();
               } else if (typeof data.createdAt === "string") {
                 createdAt = new Date(data.createdAt);
               } else {
-                createdAt = new Date(); // Fallback to current date if invalid
+                createdAt = new Date();
               }
               return {
                 id: doc.id,
@@ -79,9 +190,11 @@ export default function AdminDashboard() {
                 createdAt,
               };
             }) as Project[];
+            console.log("Updated projects state:", projectList);
             setProjects(projectList);
-            setFilteredProjects(projectList);
             setLoading(false);
+          }, (error) => {
+            console.error("onSnapshot error:", error);
           });
           return () => unsubscribe();
         }
@@ -94,61 +207,89 @@ export default function AdminDashboard() {
     checkAdminRole();
   }, [user, loadingAuth, router]);
 
-  useEffect(() => {
-    let updatedProjects = [...projects];
+  const columns = {
+    pending: {
+      title: "Pending",
+      items: projects.filter(p => p.status === "pending"),
+    },
+    in_progress: {
+      title: "In Progress",
+      items: projects.filter(p => p.status === "in_progress"),
+    },
+    completed: {
+      title: "Completed",
+      items: projects.filter(p => p.status === "completed"),
+    },
+  };
 
-    if (filterStatus !== "all") {
-      updatedProjects = updatedProjects.filter(project => project.status === filterStatus);
+  const handleDragEnd = async (event: DragEndEvent) => {
+    console.log("handleDragEnd triggered:", event);
+    const { active, over } = event;
+    if (!over) {
+      console.log("Drag cancelled: No drop target.");
+      return;
     }
 
-    if (searchQuery) {
-      updatedProjects = updatedProjects.filter(project =>
-        project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        project.userId.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+    const projectId = active.id as string;
+    const sourceColumnId = active.data.current?.sortable.containerId as keyof typeof columns;
+    console.log("Source column:", sourceColumnId);
+
+    let destColumnId: keyof typeof columns | undefined;
+    if (over.id in columns) {
+      destColumnId = over.id as keyof typeof columns;
+    } else {
+      destColumnId = over.data.current?.sortable.containerId as keyof typeof columns;
     }
 
-    updatedProjects.sort((a, b) => {
-      // Ensure createdAt is a Date before sorting
-      const dateA = a.createdAt instanceof Date ? a.createdAt : new Date();
-      const dateB = b.createdAt instanceof Date ? b.createdAt : new Date();
-      return sortOrder === "newest"
-        ? dateB.getTime() - dateA.getTime()
-        : dateA.getTime() - dateB.getTime();
-    });
+    console.log("Destination column:", destColumnId);
 
-    setFilteredProjects(updatedProjects);
-  }, [filterStatus, sortOrder, searchQuery, projects]);
+    if (!sourceColumnId || !destColumnId) {
+      console.log("Invalid source or destination column:", { sourceColumnId, destColumnId });
+      return;
+    }
 
-  const updateStatus = async (id: string, status: string) => {
+    if (sourceColumnId === destColumnId) {
+      console.log("No status change: Source and destination columns are the same.");
+      return;
+    }
+
+    console.log(`Dragging project ${projectId} from ${sourceColumnId} to ${destColumnId}`);
+
     try {
-      const projectRef = doc(db, "projects", id);
+      const projectRef = doc(db, "projects", projectId);
+      console.log("Updating Firestore with new status:", destColumnId);
+      await updateDoc(projectRef, { status: destColumnId });
+      console.log("Firestore update successful for project:", projectId);
+
       const projectSnap = await getDoc(projectRef);
       const projectData = projectSnap.data() as Project;
-
-      await updateDoc(projectRef, { status });
 
       const userDocRef = doc(db, "users", projectData.userId);
       const userSnap = await getDoc(userDocRef);
       const userEmail = userSnap.data()?.email;
 
       if (userEmail) {
+        console.log("Sending email notification to:", userEmail);
         const response = await fetch("/api/send-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             to: userEmail,
             projectTitle: projectData.title,
-            status,
+            status: destColumnId,
           }),
         });
 
         if (!response.ok) {
-          throw new Error("Failed to send email");
+          console.error("Failed to send email:", await response.text());
+        } else {
+          console.log("Email notification sent successfully.");
         }
+      } else {
+        console.log("No email found for user:", projectData.userId);
       }
     } catch (error) {
-      console.error("Error updating status or sending email:", error);
+      console.error("Error during drag-and-drop:", error);
     }
   };
 
@@ -163,7 +304,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
-      <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
@@ -192,85 +333,24 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center">
-          <div className="flex items-center">
-            <label className="mr-2 text-gray-700 font-medium">Filter by Status:</label>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All</option>
-              <option value="pending">Pending</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
-          <div className="flex items-center">
-            <label className="mr-2 text-gray-700 font-medium">Sort by:</label>
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-            </select>
-          </div>
-          <div className="flex items-center flex-1">
-            <label className="mr-2 text-gray-700 font-medium">Search:</label>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by title or user ID..."
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">All Projects</h2>
-          {filteredProjects.length === 0 ? (
-            <p className="text-gray-600">No projects found.</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProjects.map((project) => (
-                <div
-                  key={project.id}
-                  className="bg-gray-50 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
-                >
-                  <h3 className="text-lg font-semibold text-gray-800">{project.title}</h3>
-                  <p className="text-gray-600 mt-1 line-clamp-2">{project.description}</p>
-                  <p className="text-sm text-gray-500 mt-2">User ID: {project.userId}</p>
-                  <p className="text-sm text-gray-500">
-                    Created: {project.createdAt instanceof Date && !isNaN(project.createdAt.getTime())
-                      ? project.createdAt.toLocaleDateString()
-                      : "Unknown Date"}
-                  </p>
-                  <div className="mt-3 flex items-center gap-2">
-                    <span
-                      className={`text-sm px-2 py-1 rounded-full flex items-center ${
-                        statusColors[project.status] || "text-gray-500 bg-gray-200"
-                      }`}
-                    >
-                      {statusIcons[project.status] || null}
-                      {project.status.replace("_", " ")}
-                    </span>
-                    <select
-                      value={project.status || "pending"}
-                      onChange={(e) => updateStatus(project.id, e.target.value)}
-                      className="border rounded-lg p-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="completed">Completed</option>
-                    </select>
-                  </div>
-                </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="flex space-x-4 overflow-x-auto pb-4">
+              {Object.entries(columns).map(([status, column]) => (
+                <DroppableColumn
+                  key={status}
+                  status={status}
+                  title={column.title}
+                  items={column.items}
+                />
               ))}
             </div>
-          )}
+          </DndContext>
         </div>
       </main>
     </div>
