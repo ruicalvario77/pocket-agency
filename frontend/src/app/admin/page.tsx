@@ -6,7 +6,7 @@ import { auth, db } from "@/app/firebase/firebaseConfig";
 import { collection, onSnapshot, updateDoc, doc, getDoc, Timestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import React from "react";
-import { FaClock, FaHourglassHalf, FaCheckCircle, FaGripVertical } from "react-icons/fa";
+import { FaClock, FaHourglassHalf, FaCheckCircle, FaGripVertical, FaSearch } from "react-icons/fa";
 import {
   DndContext,
   closestCenter,
@@ -207,18 +207,44 @@ export default function AdminDashboard() {
     checkAdminRole();
   }, [user, loadingAuth, router]);
 
+  // Filter and sort projects
+  const filteredProjects = projects
+    .filter((project) => {
+      // Status filter
+      if (filterStatus !== "all" && project.status !== filterStatus) {
+        return false;
+      }
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        return (
+          project.title.toLowerCase().includes(query) ||
+          project.userId.toLowerCase().includes(query)
+        );
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      // Sort by createdAt
+      if (sortOrder === "newest") {
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      } else {
+        return a.createdAt.getTime() - b.createdAt.getTime();
+      }
+    });
+
   const columns = {
     pending: {
       title: "Pending",
-      items: projects.filter(p => p.status === "pending"),
+      items: filteredProjects.filter(p => p.status === "pending"),
     },
     in_progress: {
       title: "In Progress",
-      items: projects.filter(p => p.status === "in_progress"),
+      items: filteredProjects.filter(p => p.status === "in_progress"),
     },
     completed: {
       title: "Completed",
-      items: projects.filter(p => p.status === "completed"),
+      items: filteredProjects.filter(p => p.status === "completed"),
     },
   };
 
@@ -335,6 +361,58 @@ export default function AdminDashboard() {
 
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">All Projects</h2>
+          {/* Filter, Sort, and Search Controls */}
+          <div className="mb-6 flex flex-col sm:flex-row gap-4">
+            {/* Status Filter */}
+            <div className="flex-1">
+              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                Filter by Status
+              </label>
+              <select
+                id="status-filter"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All</option>
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+            {/* Sort Order */}
+            <div className="flex-1">
+              <label htmlFor="sort-order" className="block text-sm font-medium text-gray-700 mb-1">
+                Sort by Date
+              </label>
+              <select
+                id="sort-order"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+              </select>
+            </div>
+            {/* Search Input */}
+            <div className="flex-1">
+              <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
+                Search by Title or User ID
+              </label>
+              <div className="relative">
+                <input
+                  id="search"
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search projects..."
+                  className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <FaSearch className="absolute left-3 top-3 text-gray-400" />
+              </div>
+            </div>
+          </div>
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
