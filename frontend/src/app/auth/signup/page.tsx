@@ -1,83 +1,85 @@
-// src/app/auth/signup/page.tsx
 "use client";
 
 import { useState } from "react";
-import { createUserWithEmailAndPassword, AuthError } from "firebase/auth";
-import { auth } from "@/app/firebase/firebaseConfig"; // Updated import
 import { useRouter } from "next/navigation";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth, db } from "../../firebase/firebaseConfig";
+import { doc, setDoc } from "firebase/firestore";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
-
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      router.push("/dashboard"); // Redirect to Dashboard after signup
-    } catch (err) {
-      const authError = err as AuthError;
-      switch (authError.code) {
-        case "auth/email-already-in-use":
-          setError("This email is already registered.");
-          break;
-        case "auth/invalid-email":
-          setError("Invalid email format.");
-          break;
-        case "auth/weak-password":
-          setError("Password must be at least 6 characters.");
-          break;
-        default:
-          setError("Signup failed. Please try again.");
-      }
-    } finally {
-      setLoading(false);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const user = userCredential.user;
+
+      await setDoc(doc(db, "users", user.uid), {
+        email: user.email,
+        role: "customer", // Hardcode role to customer
+        createdAt: new Date().toISOString(),
+      });
+
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <h1 className="text-3xl font-bold">Sign Up</h1>
-      {error && <p className="text-red-500 mt-2">{error}</p>}
-      <form onSubmit={handleSignup} className="mt-4 flex flex-col gap-3">
-        <input
-          type="email"
-          placeholder="Email"
-          className="border p-2 w-64"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          disabled={loading}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          className="border p-2 w-64"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          disabled={loading}
-        />
-        <button
-          type="submit"
-          className="px-6 py-3 bg-green-600 text-white rounded disabled:bg-gray-400"
-          disabled={loading}
-        >
-          {loading ? "Signing up..." : "Sign Up"}
-        </button>
-      </form>
-      <p className="mt-4">
-        Already have an account?{" "}
-        <a href="/auth/login" className="text-blue-500">
-          Login
-        </a>
-      </p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+        <h2 className="text-2xl font-bold mb-6 text-center">Sign Up</h2>
+        {error && <p className="text-red-500 mb-4">{error}</p>}
+        <form onSubmit={handleSignup}>
+          <div className="mb-4">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Email
+            </label>
+            <input
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              required
+            />
+          </div>
+          <div className="mb-6">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Password
+            </label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            Sign Up
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

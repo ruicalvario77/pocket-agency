@@ -1,17 +1,60 @@
-// src/app/pricing/page.tsx
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { auth } from "@/app/firebase/firebaseConfig";
+import { auth, db } from "@/app/firebase/firebaseConfig";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { useRouter } from "next/navigation";
 
 const PricingPage = () => {
   const [loading, setLoading] = useState(false);
   const [paymentData, setPaymentData] = useState<[string, string][] | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
   const [email, setEmail] = useState("");
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const formRef = useRef<HTMLFormElement>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        console.log("No user found, redirecting to /auth/login");
+        router.push("/auth/login");
+        return;
+      }
+
+      // Fetch user role
+      const userDocRef = doc(db, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+      if (!userDoc.exists()) {
+        console.log("User document not found, redirecting to /auth/login");
+        router.push("/auth/login");
+        return;
+      }
+
+      const role = userDoc.data()?.role;
+      setUserRole(role);
+
+      // Redirect non-customers to their appropriate dashboards
+      if (role !== "customer") {
+        if (role === "superadmin") {
+          router.push("/superadmin");
+        } else if (role === "admin") {
+          router.push("/admin");
+        } else if (role === "contractor") {
+          router.push("/dashboard");
+        }
+        return;
+      }
+
+      setAuthLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [router]);
 
   const handleSubscribe = async (plan: "basic" | "pro") => {
-    if (!email) {
+    if (!email && !auth.currentUser) {
       alert("Please enter an email address to subscribe.");
       return;
     }
@@ -58,6 +101,9 @@ const PricingPage = () => {
       formRef.current.submit();
     }
   }, [paymentData, signature]);
+
+  if (authLoading) return <div className="text-center text-gray-500 mt-10">Loading...</div>;
+  if (!userRole || userRole !== "customer") return null; // Prevent rendering until redirect occurs
 
   return (
     <div className="min-h-screen bg-gray-100 pt-20">
