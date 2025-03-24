@@ -35,6 +35,7 @@ interface Subscription {
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [projectTitle, setProjectTitle] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
@@ -69,31 +70,53 @@ export default function Dashboard() {
 
       setUser(currentUser);
 
-      const subQuery = query(
-        collection(db, "subscriptions"),
-        where("userId", "==", currentUser.uid),
-        where("status", "==", "active")
-      );
-      const subSnapshot = await getDocs(subQuery);
-
-      if (subSnapshot.empty) {
-        router.push("/pricing");
-        return;
-      }
-
-      const subDoc = subSnapshot.docs[0];
-      setSubscription({
-        plan: subDoc.data().plan,
-        status: subDoc.data().status,
-      });
-
+      // Fetch user role
       const userDocRef = doc(db, "users", currentUser.uid);
       const userDoc = await getDoc(userDocRef);
-      if (!userDoc.exists() || !userDoc.data()?.onboardingCompleted) {
-        router.push("/onboarding");
+      if (!userDoc.exists()) {
+        router.push("/auth/login");
         return;
       }
 
+      const role = userDoc.data()?.role;
+      setUserRole(role);
+
+      // Redirect admins and superadmins to their respective dashboards
+      if (role === "admin") {
+        router.push("/admin");
+        return;
+      } else if (role === "superadmin") {
+        router.push("/superadmin");
+        return;
+      }
+
+      // For customers: Check subscription and onboarding
+      if (role === "customer") {
+        const subQuery = query(
+          collection(db, "subscriptions"),
+          where("userId", "==", currentUser.uid),
+          where("status", "==", "active")
+        );
+        const subSnapshot = await getDocs(subQuery);
+
+        if (subSnapshot.empty) {
+          router.push("/pricing");
+          return;
+        }
+
+        const subDoc = subSnapshot.docs[0];
+        setSubscription({
+          plan: subDoc.data().plan,
+          status: subDoc.data().status,
+        });
+
+        if (!userDoc.data()?.onboardingCompleted) {
+          router.push("/onboarding");
+          return;
+        }
+      }
+
+      // For contractors: No subscription or onboarding check (for now)
       setLoading(false);
     });
 
@@ -187,94 +210,114 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-100 pt-16">
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800">Welcome, {user.email}!</h2>
-          {subscription && (
+          <h2 className="text-xl font-semibold text-gray-800">
+            Welcome, {user.email}!
+          </h2>
+          {userRole === "customer" && subscription && (
             <p className="mt-2 text-gray-600">
               Subscription: <span className="font-medium capitalize">{subscription.plan}</span> (
               <span className="text-green-600">{subscription.status}</span>)
             </p>
           )}
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Submit a New Project</h3>
-          <form onSubmit={handleSubmitProject} className="flex flex-col gap-4">
-            <input
-              type="text"
-              placeholder="Project Title"
-              className="border rounded-lg p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={projectTitle}
-              onChange={(e) => setProjectTitle(e.target.value)}
-              required
-            />
-            <textarea
-              placeholder="Project Description"
-              className="border rounded-lg p-2 w-full h-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={projectDescription}
-              onChange={(e) => setProjectDescription(e.target.value)}
-              required
-            />
-            <button
-              type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition self-start"
-            >
-              Submit Project
-            </button>
-          </form>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Your Projects</h3>
-          {projects.length === 0 ? (
-            <p className="text-gray-600">No projects submitted yet.</p>
-          ) : (
-            <div className="flex space-x-4 overflow-x-auto pb-4">
-              {Object.entries(columns).map(([status, column]) => (
-                <div key={status} className="flex-1 min-w-[300px]">
-                  <h4
-                    className={`text-lg font-semibold mb-4 ${
-                      status === "pending"
-                        ? "text-yellow-600"
-                        : status === "in_progress"
-                        ? "text-blue-600"
-                        : "text-green-600"
-                    }`}
-                  >
-                    {column.title} ({column.items.length})
-                  </h4>
-                  <div className="bg-gray-100 rounded-lg p-4 min-h-[200px]">
-                    {column.items.map((project) => (
-                      <div
-                        key={project.id}
-                        className="bg-white rounded-lg p-4 mb-4 shadow-sm hover:shadow-md transition-shadow duration-200"
-                      >
-                        <h4 className="text-md font-semibold text-gray-800">{project.title}</h4>
-                        <p className="text-gray-600 mt-1 line-clamp-2">{project.description}</p>
-                        <p className="text-sm text-gray-500 mt-2">
-                          Created: {project.createdAt.toLocaleDateString()}
-                        </p>
-                        <div className="mt-3 flex gap-2">
-                          <button
-                            onClick={() => handleEditProject(project)}
-                            className="px-3 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProject(project)}
-                            className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+          {userRole === "contractor" && (
+            <p className="mt-2 text-gray-600">
+              This is your contractor dashboard. Task management will be available soon.
+            </p>
           )}
         </div>
+
+        {userRole === "customer" && (
+          <>
+            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Submit a New Project</h3>
+              <form onSubmit={handleSubmitProject} className="flex flex-col gap-4">
+                <input
+                  type="text"
+                  placeholder="Project Title"
+                  className="border rounded-lg p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={projectTitle}
+                  onChange={(e) => setProjectTitle(e.target.value)}
+                  required
+                />
+                <textarea
+                  placeholder="Project Description"
+                  className="border rounded-lg p-2 w-full h-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={projectDescription}
+                  onChange={(e) => setProjectDescription(e.target.value)}
+                  required
+                />
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition self-start"
+                >
+                  Submit Project
+                </button>
+              </form>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Your Projects</h3>
+              {projects.length === 0 ? (
+                <p className="text-gray-600">No projects submitted yet.</p>
+              ) : (
+                <div className="flex space-x-4 overflow-x-auto pb-4">
+                  {Object.entries(columns).map(([status, column]) => (
+                    <div key={status} className="flex-1 min-w-[300px]">
+                      <h4
+                        className={`text-lg font-semibold mb-4 ${
+                          status === "pending"
+                            ? "text-yellow-600"
+                            : status === "in_progress"
+                            ? "text-blue-600"
+                            : "text-green-600"
+                        }`}
+                      >
+                        {column.title} ({column.items.length})
+                      </h4>
+                      <div className="bg-gray-100 rounded-lg p-4 min-h-[200px]">
+                        {column.items.map((project) => (
+                          <div
+                            key={project.id}
+                            className="bg-white rounded-lg p-4 mb-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                          >
+                            <h4 className="text-md font-semibold text-gray-800">{project.title}</h4>
+                            <p className="text-gray-600 mt-1 line-clamp-2">{project.description}</p>
+                            <p className="text-sm text-gray-500 mt-2">
+                              Created: {project.createdAt.toLocaleDateString()}
+                            </p>
+                            <div className="mt-3 flex gap-2">
+                              <button
+                                onClick={() => handleEditProject(project)}
+                                className="px-3 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteProject(project)}
+                                className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {userRole === "contractor" && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Your Tasks</h3>
+            <p className="text-gray-600">
+              Task management for contractors will be implemented in a future phase.
+            </p>
+          </div>
+        )}
       </main>
 
       {/* Edit Modal */}
