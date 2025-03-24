@@ -1,4 +1,3 @@
-// src/app/admin/page.tsx
 "use client";
 import { useEffect, useState } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -128,7 +127,7 @@ export default function AdminDashboard() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [sortOrder, setSortOrder] = useState<string>("newest");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -159,52 +158,62 @@ export default function AdminDashboard() {
       return;
     }
 
-    const checkAdminRole = async () => {
+    const checkUserRole = async () => {
       try {
         const userDocRef = doc(db, "users", user.uid);
         const docSnap = await getDoc(userDocRef);
         const userData = docSnap.data();
 
-        if (!docSnap.exists() || userData?.role !== "admin") {
-          setIsAdmin(false);
-          router.push("/dashboard");
-        } else {
-          setIsAdmin(true);
-
-          const projectsRef = collection(db, "projects");
-          const unsubscribe = onSnapshot(projectsRef, (snap) => {
-            console.log("onSnapshot triggered with", snap.docs.length, "documents");
-            const projectList = snap.docs.map((doc) => {
-              const data = doc.data();
-              let createdAt: Date;
-              if (data.createdAt instanceof Timestamp) {
-                createdAt = data.createdAt.toDate();
-              } else if (typeof data.createdAt === "string") {
-                createdAt = new Date(data.createdAt);
-              } else {
-                createdAt = new Date();
-              }
-              return {
-                id: doc.id,
-                ...data,
-                createdAt,
-              };
-            }) as Project[];
-            console.log("Updated projects state:", projectList);
-            setProjects(projectList);
-            setLoading(false);
-          }, (error) => {
-            console.error("onSnapshot error:", error);
-          });
-          return () => unsubscribe();
+        if (!docSnap.exists()) {
+          router.push("/auth/login");
+          return;
         }
+
+        const role = userData?.role;
+        setUserRole(role);
+
+        if (role === "superadmin") {
+          router.push("/superadmin");
+          return;
+        } else if (role !== "admin") {
+          router.push("/dashboard");
+          return;
+        }
+
+        // User is an admin, proceed with loading projects
+        const projectsRef = collection(db, "projects");
+        const unsubscribe = onSnapshot(projectsRef, (snap) => {
+          console.log("onSnapshot triggered with", snap.docs.length, "documents");
+          const projectList = snap.docs.map((doc) => {
+            const data = doc.data();
+            let createdAt: Date;
+            if (data.createdAt instanceof Timestamp) {
+              createdAt = data.createdAt.toDate();
+            } else if (typeof data.createdAt === "string") {
+              createdAt = new Date(data.createdAt);
+            } else {
+              createdAt = new Date();
+            }
+            return {
+              id: doc.id,
+              ...data,
+              createdAt,
+            };
+          }) as Project[];
+          console.log("Updated projects state:", projectList);
+          setProjects(projectList);
+          setLoading(false);
+        }, (error) => {
+          console.error("onSnapshot error:", error);
+        });
+        return () => unsubscribe();
       } catch (error) {
-        console.error("Error checking admin role:", error);
+        console.error("Error checking user role:", error);
         router.push("/dashboard");
       }
     };
 
-    checkAdminRole();
+    checkUserRole();
   }, [user, loadingAuth, router]);
 
   // Filter and sort projects
@@ -326,7 +335,7 @@ export default function AdminDashboard() {
   };
 
   if (loading || loadingAuth) return <div className="text-center mt-20 text-xl text-gray-500">Loading...</div>;
-  if (isAdmin === false) return null;
+  if (!user || userRole !== "admin") return null; // Prevent rendering until redirect occurs
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16">

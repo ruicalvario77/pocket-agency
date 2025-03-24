@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
       updateData.associationToken = associationToken;
       updateData.tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-      const associationLink = `${process.env.NEXT_PUBLIC_BASE_URL || "https://324f-20-192-21-49.ngrok-free.app"}/associate-account?token=${associationToken}`;
+      const associationLink = `${process.env.NEXT_PUBLIC_BASE_URL || "https://baec-4-240-39-194.ngrok-free.app"}/associate-account?token=${associationToken}`;
       try {
         await sendEmail(
           email_address || "user@example.com",
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
       const failureMessage = `
         Dear Customer,
         Your initial subscription payment failed.
-        Please retry by updating your payment method at ${process.env.NEXT_PUBLIC_BASE_URL || "https://324f-20-192-21-49.ngrok-free.app"}/pricing.
+        Please retry by updating your payment method at ${process.env.NEXT_PUBLIC_BASE_URL || "https://baec-4-240-39-194.ngrok-free.app"}/pricing.
         If you need assistance, contact us at support@pocketagency.com.
       `;
       try {
@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
         Dear Customer,
         We attempted to process your subscription payment but it failed.
         We will retry again in 24 hours. Please ensure your payment method is up to date.
-        Update your payment method at ${process.env.NEXT_PUBLIC_BASE_URL || "https://324f-20-192-21-49.ngrok-free.app"}/billing.
+        Update your payment method at ${process.env.NEXT_PUBLIC_BASE_URL || "https://baec-4-240-39-194.ngrok-free.app"}/billing.
       `;
       try {
         await sendEmail(
@@ -226,7 +226,7 @@ export async function POST(req: NextRequest) {
       const cancellationMessage = `
         Dear Customer,
         Your Pocket Agency subscription has been cancelled due to repeated payment failures.
-        Please resubscribe at ${process.env.NEXT_PUBLIC_BASE_URL || "https://324f-20-192-21-49.ngrok-free.app"}/pricing to continue using our services.
+        Please resubscribe at ${process.env.NEXT_PUBLIC_BASE_URL || "https://baec-4-240-39-194.ngrok-free.app"}/pricing to continue using our services.
       `;
       try {
         await sendEmail(

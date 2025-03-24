@@ -1,13 +1,53 @@
-// src/app/onboarding/page.tsx
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/app/firebase/firebaseConfig";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 
 export default function Onboarding() {
   const [step, setStep] = useState(1);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        console.log("No user found, redirecting to /auth/login");
+        router.push("/auth/login");
+        return;
+      }
+
+      // Fetch user role
+      const userDocRef = doc(db, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+      if (!userDoc.exists()) {
+        console.log("User document not found, redirecting to /auth/login");
+        router.push("/auth/login");
+        return;
+      }
+
+      const role = userDoc.data()?.role;
+      setUserRole(role);
+
+      // Redirect non-customers to their appropriate dashboards
+      if (role !== "customer") {
+        if (role === "superadmin") {
+          router.push("/superadmin");
+        } else if (role === "admin") {
+          router.push("/admin");
+        } else if (role === "contractor") {
+          router.push("/dashboard");
+        }
+        return;
+      }
+
+      setAuthLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [router]);
 
   const handleNext = async () => {
     if (step < 3) {
@@ -23,6 +63,9 @@ export default function Onboarding() {
       router.push("/dashboard");
     }
   };
+
+  if (authLoading) return <div className="text-center text-gray-500 mt-10">Loading...</div>;
+  if (!userRole || userRole !== "customer") return null; // Prevent rendering until redirect occurs
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">

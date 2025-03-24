@@ -1,4 +1,3 @@
-// src/app/billing/page.tsx
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -9,7 +8,8 @@ import { onAuthStateChanged } from "firebase/auth";
 
 export default function Billing() {
   const [currentPlan, setCurrentPlan] = useState<PlanType | null>(null);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<string>("ACTIVE"); // Added to track status
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>("ACTIVE");
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -24,8 +24,33 @@ export default function Billing() {
         router.push("/auth/login");
         return;
       }
-      console.log("Fetching subscription for user:", user.uid);
 
+      // Fetch user role
+      const userDocRef = doc(db, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+      if (!userDoc.exists()) {
+        console.log("User document not found, redirecting to /auth/login");
+        router.push("/auth/login");
+        return;
+      }
+
+      const role = userDoc.data()?.role;
+      setUserRole(role);
+
+      // Redirect non-customers to their appropriate dashboards
+      if (role !== "customer") {
+        if (role === "superadmin") {
+          router.push("/superadmin");
+        } else if (role === "admin") {
+          router.push("/admin");
+        } else if (role === "contractor") {
+          router.push("/dashboard");
+        }
+        return;
+      }
+
+      // User is a customer, proceed with fetching subscription
+      console.log("Fetching subscription for user:", user.uid);
       try {
         const q = query(collection(db, "subscriptions"), where("userId", "==", user.uid));
         const subscriptionSnap = await getDocs(q);
@@ -33,7 +58,7 @@ export default function Billing() {
           const data = subscriptionSnap.docs[0].data();
           console.log("Subscription data:", data);
           setCurrentPlan(data.plan || "basic");
-          setSubscriptionStatus(data.status || "ACTIVE"); // Set the subscription status
+          setSubscriptionStatus(data.status || "ACTIVE");
         } else {
           console.log("No subscription found for user:", user.uid);
           setError("No subscription found");
@@ -113,6 +138,7 @@ export default function Billing() {
   };
 
   if (loading) return <div className="text-center text-gray-500 mt-10">Loading...</div>;
+  if (!userRole || userRole !== "customer") return null; // Prevent rendering until redirect occurs
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
