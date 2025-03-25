@@ -2,12 +2,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { auth } from "@/app/firebase/firebaseConfig"; // Correct import
-import { signOut } from "firebase/auth";
+import { auth } from "@/app/firebase/firebaseConfig";
+import { signOut, User } from "firebase/auth"; // Import User type
 import { useRouter } from "next/navigation";
 
 export default function Navbar() {
-  const [user, setUser] = useState<any>(null); // Could type as firebase.User
+  const [user, setUser] = useState<User | null>(null); // Use User type instead of any
   const router = useRouter();
 
   useEffect(() => {

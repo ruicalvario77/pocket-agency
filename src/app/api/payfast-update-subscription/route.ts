@@ -3,8 +3,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/app/firebase/admin";
 import { getAuth } from "firebase-admin/auth";
 import { PLANS, PlanType } from "../../config/plans";
-const nodeCrypto = require("crypto") as typeof import("crypto");
+import nodeCrypto from "crypto";
 import { sendEmail } from "@/app/utils/email";
+
+// Define the type for updateData
+interface UpdateData {
+  plan: PlanType;
+  updatedAt: string;
+  proratedCharge?: number;
+  effectiveDate?: string;
+  [key: string]: string | number | boolean | object | null | undefined; // More specific than 'any'
+}
 
 export async function POST(req: NextRequest) {
   const { newPlan }: { newPlan: PlanType } = await req.json();
@@ -35,7 +44,7 @@ export async function POST(req: NextRequest) {
   const daysRemaining = daysInMonth - today.getDate() + 1;
 
   const passphrase = process.env.PAYFAST_PASSPHRASE || "Ru1j3ssale77-77";
-  let updateData: any = { plan: newPlan, updatedAt: today.toISOString() };
+  const updateData: UpdateData = { plan: newPlan, updatedAt: today.toISOString() };
 
   if (newPrice > currentPrice) {
     // Upgrade: Prorate the difference

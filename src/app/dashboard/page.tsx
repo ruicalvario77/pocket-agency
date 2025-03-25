@@ -1,9 +1,9 @@
+// src/app/dashboard/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth } from "@/app/firebase/firebaseConfig";
-import { signOut } from "firebase/auth";
 import {
   getFirestore,
   collection,
@@ -18,6 +18,7 @@ import {
   getDoc,
   Timestamp,
 } from "firebase/firestore";
+import { User } from "firebase/auth"; // Import User type
 
 interface Project {
   id: string;
@@ -34,7 +35,7 @@ interface Subscription {
 }
 
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null); // Use User type instead of any
   const [userRole, setUserRole] = useState<string | null>(null);
   const [projectTitle, setProjectTitle] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
@@ -48,12 +49,6 @@ export default function Dashboard() {
   const [showToast, setShowToast] = useState(false);
   const router = useRouter();
   const db = getFirestore();
-
-  const statusColors: { [key: string]: string } = {
-    pending: "text-yellow-600 bg-yellow-100",
-    in_progress: "text-blue-600 bg-blue-100",
-    completed: "text-green-600 bg-green-100",
-  };
 
   const columns = {
     pending: { title: "Pending", items: projects.filter(p => p.status === "pending") },
@@ -121,7 +116,7 @@ export default function Dashboard() {
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, [router, db]); // Add db to dependency array
 
   useEffect(() => {
     if (!user || loading) return;
@@ -143,7 +138,7 @@ export default function Dashboard() {
     });
 
     return () => unsubscribe();
-  }, [user, loading]);
+  }, [user, loading, db]); // Add db to dependency array
 
   const handleSubmitProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -211,7 +206,7 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-800">
-            Welcome, {user.email}!
+            Welcome, {user?.email ?? "User"}!
           </h2>
           {userRole === "customer" && subscription && (
             <p className="mt-2 text-gray-600">
@@ -360,7 +355,7 @@ export default function Dashboard() {
           <div className="bg-white rounded-lg p-6 shadow-lg w-full max-w-md">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Confirm Deletion</h2>
             <p className="text-gray-600 mb-4">
-              Are you sure you want to delete "<strong>{deletingProject.title}</strong>"? This action cannot be undone.
+              Are you sure you want to delete <strong>&quot;{deletingProject.title}&quot;</strong>? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
               <button

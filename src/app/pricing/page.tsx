@@ -1,3 +1,4 @@
+// src/app/pricing/page.tsx
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { auth, db } from "@/app/firebase/firebaseConfig";
@@ -87,9 +88,13 @@ const PricingPage = () => {
       console.log("Payment data received:", paymentData, "Signature:", signature);
       setPaymentData(paymentData);
       setSignature(signature);
-    } catch (error: any) {
+    } catch (error: unknown) { // Change to unknown
+      let errorMessage = "An unexpected error occurred";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
       console.error("Subscription error:", error);
-      alert(error.message || "An error occurred while initiating your subscription.");
+      alert(errorMessage || "An error occurred while initiating your subscription.");
     } finally {
       setLoading(false);
     }

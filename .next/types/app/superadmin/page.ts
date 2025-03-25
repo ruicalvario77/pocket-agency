@@ -1,4 +1,4 @@
-// File: /workspaces/pocket-agency/frontend/src/app/superadmin/page.tsx
+// File: /workspaces/pocket-agency/src/app/superadmin/page.tsx
 import * as entry from '../../../../src/app/superadmin/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

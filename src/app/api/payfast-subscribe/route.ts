@@ -1,6 +1,6 @@
 // src/app/api/payfast-subscribe/route.ts
 import { NextRequest, NextResponse } from "next/server";
-const nodeCrypto = require("crypto") as typeof import("crypto");
+import nodeCrypto from "crypto"; // Fixed import
 import { auth, db } from "@/app/firebase/admin";
 import { sendEmail } from "@/app/utils/email"; // Using standard sendEmail for consistency
 

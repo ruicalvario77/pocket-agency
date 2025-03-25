@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/app/firebase/admin";
 import { getAuth } from "firebase-admin/auth";
-const nodeCrypto = require("crypto") as typeof import("crypto");
+import nodeCrypto from "crypto"; // Fixed import
 import { sendEmail } from "@/app/utils/email";
 
 export async function POST(req: NextRequest) {

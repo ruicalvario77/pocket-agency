@@ -1,3 +1,4 @@
+// src/app/admin/page.tsx
 "use client";
 import { useEffect, useState } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -5,7 +6,7 @@ import { auth, db } from "@/app/firebase/firebaseConfig";
 import { collection, onSnapshot, updateDoc, doc, getDoc, Timestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import React from "react";
-import { FaClock, FaHourglassHalf, FaCheckCircle, FaGripVertical, FaSearch } from "react-icons/fa";
+import { FaGripVertical, FaSearch } from "react-icons/fa"; // Removed FaClock, FaHourglassHalf, FaCheckCircle
 import {
   DndContext,
   closestCenter,
@@ -130,18 +131,6 @@ export default function AdminDashboard() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-
-  const statusColors: { [key: string]: string } = {
-    pending: "text-yellow-600 bg-yellow-100",
-    in_progress: "text-blue-600 bg-blue-100",
-    completed: "text-green-600 bg-green-100",
-  };
-
-  const statusIcons: { [key: string]: React.ReactNode } = {
-    pending: <FaClock className="inline-block mr-1" />,
-    in_progress: <FaHourglassHalf className="inline-block mr-1" />,
-    completed: <FaCheckCircle className="inline-block mr-1" />,
-  };
 
   const sensors = useSensors(
     useSensor(PointerSensor),

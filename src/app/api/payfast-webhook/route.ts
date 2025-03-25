@@ -1,8 +1,22 @@
 // src/app/api/payfast-webhook/route.ts
 import { NextRequest } from "next/server";
-const nodeCrypto = require("crypto") as typeof import("crypto");
+import nodeCrypto from "crypto";
 import { db } from "@/app/firebase/admin";
 import { sendEmail } from "@/app/utils/email";
+
+// Define the type for updateData
+interface WebhookUpdateData {
+  status: string;
+  payfastSubscriptionId: string;
+  payfastToken: string;
+  updatedAt: string;
+  temp: boolean;
+  retryAttempts: number;
+  plan: string;
+  associationToken?: string;
+  tokenExpiresAt?: string;
+  [key: string]: string | number | boolean | object | null | undefined; // More specific than 'any'
+}
 
 export async function POST(req: NextRequest) {
   console.log("🚀 PayFast Webhook Received");
@@ -77,7 +91,7 @@ export async function POST(req: NextRequest) {
 
   const subscriptionData = subscription.data()!;
   if (payment_status === "COMPLETE") {
-    const updateData: Record<string, any> = {
+    const updateData: WebhookUpdateData = {
       status: "active",
       payfastSubscriptionId: m_payment_id,
       payfastToken: token,
