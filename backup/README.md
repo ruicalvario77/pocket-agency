@@ -1,2 +1,0 @@
-# pocket-agency
-Pocket Agency
