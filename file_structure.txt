@@ -1,71 +1,74 @@
 .
 ├── README.md
+├── eslint.config.mjs
 ├── file_structure.txt
-├── frontend
-│   ├── README.md
-│   ├── eslint.config.mjs
-│   ├── frontend
-│   │   ├── robots.txt
-│   │   └── sitemap.xml
-│   ├── next-env.d.ts
-│   ├── next-sitemap.config.js
-│   ├── next.config.ts
-│   ├── package-lock.json
-│   ├── package.json
-│   ├── postcss.config.mjs
-│   ├── public
-│   │   ├── file.svg
-│   │   ├── globe.svg
-│   │   ├── next.svg
-│   │   ├── robots.txt
-│   │   ├── sitemap.xml
-│   │   ├── vercel.svg
-│   │   └── window.svg
-│   ├── src
-│   │   └── app
-│   │       ├── admin
-│   │       │   └── page.tsx
-│   │       ├── api
-│   │       │   ├── payfast-cancel-subscription
-│   │       │   ├── payfast-subscribe
-│   │       │   ├── payfast-update-subscription
-│   │       │   ├── payfast-webhook
-│   │       │   ├── route.ts
-│   │       │   └── send-email
-│   │       ├── associate-account
-│   │       │   └── page.tsx
-│   │       ├── auth
-│   │       │   ├── login
-│   │       │   └── signup
-│   │       ├── billing
-│   │       │   └── page.tsx
-│   │       ├── components
-│   │       │   ├── Footer.tsx
-│   │       │   └── Navbar.tsx
-│   │       ├── config
-│   │       │   └── plans.ts
-│   │       ├── dashboard
-│   │       │   └── page.tsx
-│   │       ├── favicon.ico
-│   │       ├── firebase
-│   │       │   ├── admin.ts
-│   │       │   └── firebaseConfig.ts
-│   │       ├── globals.css
-│   │       ├── layout.tsx
-│   │       ├── onboarding
-│   │       │   └── page.tsx
-│   │       ├── page.tsx
-│   │       ├── pricing
-│   │       │   └── page.tsx
-│   │       ├── styles
-│   │       ├── success
-│   │       │   └── page.tsx
-│   │       └── utils
-│   │           └── email.ts
-│   ├── test-hash.ts
-│   └── tsconfig.json
+├── next-env.d.ts
+├── next-sitemap.config.js
+├── next.config.ts
 ├── package-lock.json
 ├── package.json
-└── tailwind.config.js
+├── postcss.config.mjs
+├── public
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── next.svg
+│   ├── robots.txt
+│   ├── sitemap.xml
+│   ├── vercel.svg
+│   └── window.svg
+├── src
+│   └── app
+│       ├── admin
+│       │   └── page.tsx
+│       ├── api
+│       │   ├── payfast-cancel-subscription
+│       │   │   └── route.ts
+│       │   ├── payfast-subscribe
+│       │   │   └── route.ts
+│       │   ├── payfast-update-subscription
+│       │   │   └── route.ts
+│       │   ├── payfast-webhook
+│       │   │   └── route.ts
+│       │   ├── route.ts
+│       │   └── send-email
+│       │       └── route.ts
+│       ├── associate-account
+│       │   └── page.tsx
+│       ├── auth
+│       │   ├── login
+│       │   │   └── page.tsx
+│       │   └── signup
+│       │       └── page.tsx
+│       ├── billing
+│       │   └── page.tsx
+│       ├── components
+│       │   ├── Footer.tsx
+│       │   └── Navbar.tsx
+│       ├── config
+│       │   └── plans.ts
+│       ├── dashboard
+│       │   └── page.tsx
+│       ├── favicon.ico
+│       ├── firebase
+│       │   ├── admin.ts
+│       │   └── firebaseConfig.ts
+│       ├── globals.css
+│       ├── layout.tsx
+│       ├── onboarding
+│       │   └── page.tsx
+│       ├── page.tsx
+│       ├── pricing
+│       │   └── page.tsx
+│       ├── styles
+│       ├── success
+│       │   └── page.tsx
+│       ├── superadmin
+│       │   └── page.tsx
+│       └── utils
+│           ├── createSuperadmin.ts
+│           └── email.ts
+├── tailwind.config.js
+├── test-hash.ts
+└── tsconfig.json
 
-26 directories, 42 files
+25 directories, 46 files
