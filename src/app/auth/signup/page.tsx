@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { createUserWithEmailAndPassword, AuthError } from "firebase/auth";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "@/app/firebase/firebaseConfig";
 import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
@@ -10,7 +10,8 @@ import { useRouter } from "next/navigation";
 export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState(""); // Add fullName state
+  const [fullName, setFullName] = useState("");
+  const [plan, setPlan] = useState<"basic" | "pro" | "">(""); // Add plan selection
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -21,33 +22,81 @@ export default function Signup() {
     setLoading(true);
 
     try {
+      // Validate plan selection
+      if (!plan) {
+        throw new Error("Please select a plan");
+      }
+
+      // Create the user in Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
+      // Create user document in Firestore
       await setDoc(doc(db, "users", user.uid), {
-        email: user.email,
-        fullName, // Include fullName in the Firestore document
+        email,
+        fullName,
         role: "customer",
-        createdAt: new Date().toISOString(),
         onboardingCompleted: false,
       });
 
-      router.push("/onboarding");
-    } catch (err) {
-      const authError = err as AuthError;
-      switch (authError.code) {
-        case "auth/email-already-in-use":
-          setError("An account with this email already exists.");
-          break;
-        case "auth/invalid-email":
-          setError("Invalid email format.");
-          break;
-        case "auth/weak-password":
-          setError("Password must be at least 6 characters long.");
-          break;
-        default:
-          setError("Signup failed. Please try again.");
+      // Send verification email
+      await fetch("/api/send-verification-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, userId: user.uid }),
+      });
+
+      // Create a pending subscription
+      const subscriptionRef = doc(db, "subscriptions", user.uid);
+      await setDoc(subscriptionRef, {
+        userId: user.uid,
+        email_address: email,
+        plan,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      });
+
+      // Redirect to PayFast for payment
+      const response = await fetch("/api/payfast-subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${await user.getIdToken()}`,
+        },
+        body: JSON.stringify({ plan, email }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to initiate subscription");
       }
+
+      const { paymentData, signature } = await response.json();
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = "https://sandbox.payfast.co.za/eng/process";
+      paymentData.forEach(([key, value]: [string, string]) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = value;
+        form.appendChild(input);
+      });
+      const signatureInput = document.createElement("input");
+      signatureInput.type = "hidden";
+      signatureInput.name = "signature";
+      signatureInput.value = signature;
+      form.appendChild(signatureInput);
+      document.body.appendChild(form);
+      form.submit();
+    } catch (err: unknown) {
+      let errorMessage = "An unexpected error occurred";
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
+      console.error("Signup error:", err);
+    } finally {
       setLoading(false);
     }
   };
@@ -60,44 +109,49 @@ export default function Signup() {
         <input
           type="text"
           placeholder="Full Name"
-          className="border p-2 w-64"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
+          className="border p-2 w-64"
           required
           disabled={loading}
         />
         <input
           type="email"
           placeholder="Email"
-          className="border p-2 w-64"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          className="border p-2 w-64"
           required
           disabled={loading}
         />
         <input
           type="password"
           placeholder="Password"
-          className="border p-2 w-64"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          className="border p-2 w-64"
           required
           disabled={loading}
         />
+        <select
+          value={plan}
+          onChange={(e) => setPlan(e.target.value as "basic" | "pro")}
+          className="border p-2 w-64"
+          required
+          disabled={loading}
+        >
+          <option value="">Select a Plan</option>
+          <option value="basic">Basic Plan (R3000/month)</option>
+          <option value="pro">Pro Plan (R8000/month)</option>
+        </select>
         <button
           type="submit"
           className="px-6 py-3 bg-blue-600 text-white rounded disabled:bg-gray-400"
           disabled={loading}
         >
-          {loading ? "Signing up..." : "Sign Up"}
+          {loading ? "Processing..." : "Sign Up"}
         </button>
       </form>
-      <p className="mt-4">
-        Already have an account?{" "}
-        <a href="/auth/login" className="text-blue-500">
-          Login
-        </a>
-      </p>
     </div>
   );
 }
