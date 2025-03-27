@@ -1,3 +1,4 @@
+// src/app/auth/signup/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -9,6 +10,7 @@ import { useRouter } from "next/navigation";
 export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState(""); // Add fullName state
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -24,6 +26,7 @@ export default function Signup() {
 
       await setDoc(doc(db, "users", user.uid), {
         email: user.email,
+        fullName, // Include fullName in the Firestore document
         role: "customer",
         createdAt: new Date().toISOString(),
         onboardingCompleted: false,
@@ -54,6 +57,15 @@ export default function Signup() {
       <h1 className="text-3xl font-bold">Sign Up</h1>
       {error && <p className="text-red-500 mt-2">{error}</p>}
       <form onSubmit={handleSignup} className="mt-4 flex flex-col gap-3">
+        <input
+          type="text"
+          placeholder="Full Name"
+          className="border p-2 w-64"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          required
+          disabled={loading}
+        />
         <input
           type="email"
           placeholder="Email"
