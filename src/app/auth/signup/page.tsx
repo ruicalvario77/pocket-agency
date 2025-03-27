@@ -5,7 +5,6 @@ import { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "@/app/firebase/firebaseConfig";
 import { doc, setDoc } from "firebase/firestore";
-import { useRouter } from "next/navigation";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
@@ -14,7 +13,6 @@ export default function Signup() {
   const [plan, setPlan] = useState<"basic" | "pro" | "">(""); // Add plan selection
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
