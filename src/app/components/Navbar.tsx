@@ -3,11 +3,12 @@
 
 import { useState, useEffect } from "react";
 import { auth } from "@/app/firebase/firebaseConfig";
-import { signOut, User } from "firebase/auth"; // Import User type
+import { signOut, User } from "firebase/auth";
 import { useRouter } from "next/navigation";
+import Link from "next/link"; // Import Link for navigation
 
 export default function Navbar() {
-  const [user, setUser] = useState<User | null>(null); // Use User type instead of any
+  const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -27,23 +28,23 @@ export default function Navbar() {
       <div className="max-w-6xl mx-auto flex justify-between items-center px-4">
         <h1 className="text-2xl font-bold text-blue-600">Pocket Agency</h1>
         <div>
-          <a href="#home" className="text-gray-700 hover:text-blue-600 mx-2">
+          <Link href="/#home" className="text-gray-700 hover:text-blue-600 mx-2">
             Home
-          </a>
-          <a href="#services" className="text-gray-700 hover:text-blue-600 mx-2">
+          </Link>
+          <Link href="/#services" className="text-gray-700 hover:text-blue-600 mx-2">
             Services
-          </a>
-          <a href="/pricing" className="text-gray-700 hover:text-blue-600 mx-2">
-            Pricing
-          </a>
-          <a href="#contact" className="text-gray-700 hover:text-blue-600 mx-2">
+          </Link>
+          <Link href="/#contact" className="text-gray-700 hover:text-blue-600 mx-2">
             Contact
-          </a>
+          </Link>
+          <Link href="/pricing" className="text-gray-700 hover:text-blue-600 mx-2">
+            Pricing
+          </Link>
           {user ? (
             <>
-              <a href="/dashboard" className="text-gray-700 hover:text-blue-600 mx-2">
+              <Link href="/dashboard" className="text-gray-700 hover:text-blue-600 mx-2">
                 Dashboard
-              </a>
+              </Link>
               <button
                 onClick={handleLogout}
                 className="text-gray-700 hover:text-blue-600 mx-2"
@@ -52,9 +53,9 @@ export default function Navbar() {
               </button>
             </>
           ) : (
-            <a href="/auth/login" className="text-gray-700 hover:text-blue-600 mx-2">
+            <Link href="/auth/login" className="text-gray-700 hover:text-blue-600 mx-2">
               Login
-            </a>
+            </Link>
           )}
         </div>
       </div>
