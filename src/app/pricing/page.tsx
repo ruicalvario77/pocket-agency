@@ -18,36 +18,32 @@ const PricingPage = () => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        console.log("No user found, redirecting to /auth/login");
-        router.push("/auth/login");
-        return;
-      }
-
-      // Fetch user role
-      const userDocRef = doc(db, "users", user.uid);
-      const userDoc = await getDoc(userDocRef);
-      if (!userDoc.exists()) {
-        console.log("User document not found, redirecting to /auth/login");
-        router.push("/auth/login");
-        return;
-      }
-
-      const role = userDoc.data()?.role;
-      setUserRole(role);
-
-      // Redirect non-customers to their appropriate dashboards
-      if (role !== "customer") {
-        if (role === "superadmin") {
-          router.push("/superadmin");
-        } else if (role === "admin") {
-          router.push("/admin");
-        } else if (role === "contractor") {
-          router.push("/dashboard");
+      if (user) {
+        // User is logged in, fetch their role
+        const userDocRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (!userDoc.exists()) {
+          console.log("User document not found, redirecting to /auth/login");
+          router.push("/auth/login");
+          return;
         }
-        return;
-      }
 
+        const role = userDoc.data()?.role;
+        setUserRole(role);
+
+        // Redirect non-customers to their appropriate dashboards
+        if (role !== "customer") {
+          if (role === "superadmin") {
+            router.push("/superadmin");
+          } else if (role === "admin") {
+            router.push("/admin");
+          } else if (role === "contractor") {
+            router.push("/dashboard");
+          }
+          return;
+        }
+      }
+      // If no user is logged in, allow the page to load (no redirect)
       setAuthLoading(false);
     });
 
@@ -56,7 +52,8 @@ const PricingPage = () => {
 
   const handleSubscribe = async (plan: "basic" | "pro") => {
     if (!email && !auth.currentUser) {
-      alert("Please enter an email address to subscribe.");
+      // If the user is not logged in, redirect to login before subscribing
+      router.push("/auth/login");
       return;
     }
 
@@ -88,7 +85,7 @@ const PricingPage = () => {
       console.log("Payment data received:", paymentData, "Signature:", signature);
       setPaymentData(paymentData);
       setSignature(signature);
-    } catch (error: unknown) { // Change to unknown
+    } catch (error: unknown) {
       let errorMessage = "An unexpected error occurred";
       if (error instanceof Error) {
         errorMessage = error.message;
@@ -108,7 +105,7 @@ const PricingPage = () => {
   }, [paymentData, signature]);
 
   if (authLoading) return <div className="text-center text-gray-500 mt-10">Loading...</div>;
-  if (!userRole || userRole !== "customer") return null; // Prevent rendering until redirect occurs
+  if (userRole && userRole !== "customer") return null; // Prevent rendering until redirect occurs
 
   return (
     <div className="min-h-screen bg-gray-100 pt-20">
