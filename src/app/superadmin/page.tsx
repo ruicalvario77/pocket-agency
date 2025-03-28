@@ -41,36 +41,63 @@ export default function SuperadminDashboard() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("analytics");
   const [showWelcome, setShowWelcome] = useState(false);
+  const [userData, setUserData] = useState<any>(null);
   const router = useRouter();
 
   useEffect(() => {
     const checkUserRole = async () => {
       if (!user && !loading) {
+        console.log("No user, redirecting to login");
         router.push("/auth/login");
       } else if (user) {
         const userDocRef = doc(db, "users", user.uid);
         const userDoc = await getDoc(userDocRef);
-        const role = userDoc.data()?.role;
-        setUserRole(role);
-        if (role !== "superadmin") {
-          if (role === "admin") {
-            router.push("/admin");
-          } else {
-            router.push("/dashboard");
-          }
+        if (!userDoc.exists()) {
+          console.log("User document not found, redirecting to login");
+          router.push("/auth/login");
           return;
         }
 
-        // Check if this is the first login
-        if (!userDoc.data()?.hasSeenWelcome) {
-          setShowWelcome(true);
-          // Update Firestore to mark welcome as seen
-          await setDoc(userDocRef, { hasSeenWelcome: true }, { merge: true });
+        const role = userDoc.data()?.role;
+        console.log("User role:", role);
+        setUserRole(role);
+        setUserData(userDoc.data());
+
+        if (role !== "superadmin") {
+          if (role === "admin") {
+            console.log("User is admin, redirecting to /admin");
+            router.push("/admin");
+          } else {
+            console.log("User is not superadmin, redirecting to /dashboard");
+            router.push("/dashboard");
+          }
+          return;
         }
       }
     };
     checkUserRole();
   }, [user, loading, router]);
+
+  useEffect(() => {
+    const checkWelcomeMessage = async () => {
+      if (user && userRole === "superadmin") {
+        const userDocRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userDocRef);
+        const hasSeenWelcome = userDoc.data()?.hasSeenWelcome;
+        console.log("hasSeenWelcome:", hasSeenWelcome);
+
+        if (hasSeenWelcome === undefined || !hasSeenWelcome) {
+          console.log("Showing welcome message");
+          setShowWelcome(true);
+          // Update Firestore to mark welcome as seen
+          await setDoc(userDocRef, { hasSeenWelcome: true }, { merge: true });
+        } else {
+          console.log("Welcome message already seen");
+        }
+      }
+    };
+    checkWelcomeMessage();
+  }, [user, userRole]);
 
   if (loading) {
     return <div className="text-center text-gray-500 mt-10">Loading...</div>;
@@ -81,14 +108,14 @@ export default function SuperadminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 pt-24"> {/* Increased padding from pt-20 to pt-24 */}
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Superadmin Dashboard</h1>
 
         {/* Welcome Message and Guide */}
         {showWelcome && (
           <div className="bg-blue-100 p-6 rounded-lg mb-6">
-            <h2 className="text-2xl font-semibold text-blue-800 mb-4">Welcome, {user.displayName || "Superadmin"}!</h2>
+            <h2 className="text-2xl font-semibold text-blue-800 mb-4">Welcome, {userData?.fullName || "Superadmin"}!</h2>
             <p className="text-gray-700 mb-4">
               Thank you for joining Pocket Agency as a Superadmin. This portal allows you to manage all aspects of the platform, including analytics, customers, contractors, and admins.
             </p>
