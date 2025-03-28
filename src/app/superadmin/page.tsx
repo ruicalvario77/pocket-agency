@@ -7,6 +7,15 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db } from "../firebase/firebaseConfig";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
+// Define the UserData interface
+interface UserData {
+  email: string;
+  fullName: string;
+  role: string;
+  onboardingCompleted: boolean;
+  hasSeenWelcome?: boolean;
+}
+
 // Placeholder components for each section
 const AnalyticsSection = () => (
   <div className="p-4">
@@ -41,7 +50,7 @@ export default function SuperadminDashboard() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("analytics");
   const [showWelcome, setShowWelcome] = useState(false);
-  const [userData, setUserData] = useState<any>(null);
+  const [userData, setUserData] = useState<UserData | null>(null); // Use UserData interface instead of any
   const router = useRouter();
 
   useEffect(() => {
@@ -61,7 +70,7 @@ export default function SuperadminDashboard() {
         const role = userDoc.data()?.role;
         console.log("User role:", role);
         setUserRole(role);
-        setUserData(userDoc.data());
+        setUserData(userDoc.data() as UserData); // Cast to UserData
 
         if (role !== "superadmin") {
           if (role === "admin") {
@@ -108,7 +117,7 @@ export default function SuperadminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 pt-24"> {/* Increased padding from pt-20 to pt-24 */}
+    <div className="min-h-screen bg-gray-100 pt-24">
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Superadmin Dashboard</h1>
 
