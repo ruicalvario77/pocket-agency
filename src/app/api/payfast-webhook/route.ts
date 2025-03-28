@@ -4,20 +4,6 @@ import nodeCrypto from "crypto";
 import { db } from "@/app/firebase/admin";
 import { sendEmail } from "@/app/utils/email";
 
-// Define the type for updateData
-interface WebhookUpdateData {
-  status: string;
-  payfastSubscriptionId: string;
-  payfastToken: string;
-  updatedAt: string;
-  temp: boolean;
-  retryAttempts: number;
-  plan: string;
-  associationToken?: string;
-  tokenExpiresAt?: string;
-  [key: string]: string | number | boolean | object | null | undefined; // More specific than 'any'
-}
-
 export async function POST(req: NextRequest) {
   console.log("🚀 PayFast Webhook Received");
 
@@ -91,36 +77,33 @@ export async function POST(req: NextRequest) {
 
   const subscriptionData = subscription.data()!;
   if (payment_status === "COMPLETE") {
-    const updateData: WebhookUpdateData = {
+    const updateData = {
       status: "active",
       payfastSubscriptionId: m_payment_id,
       payfastToken: token,
       updatedAt: new Date().toISOString(),
-      temp: true,
       retryAttempts: 0,
-      plan: subscriptionData.plan || "basic", // Default to "basic" if plan is not set
     };
-
-    if (!subscriptionData.userId) {
-      const associationToken = nodeCrypto.randomBytes(16).toString("hex");
-      updateData.associationToken = associationToken;
-      updateData.tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-
-      const associationLink = `${process.env.NEXT_PUBLIC_BASE_URL || "https://pocket-agency-swart.vercel.app"}/associate-account?token=${associationToken}`;
-      try {
-        await sendEmail(
-          email_address || "user@example.com",
-          "Associate Your Pocket Agency Account",
-          `Please associate your account using this link: ${associationLink}`
-        );
-        console.log("📧 Association email sent to:", email_address, "Link:", associationLink);
-      } catch (error) {
-        console.error("Failed to send association email (continuing anyway):", error);
-      }
-    }
 
     await subscriptionRef.update(updateData);
     console.log("✅ Subscription updated to active:", m_payment_id);
+
+    const failureMessage = `
+      Dear Customer,
+      Your initial subscription payment was successful.
+      Please log in to continue: ${process.env.NEXT_PUBLIC_BASE_URL || "https://pocket-agency.vercel.app"}/auth/login.
+      If you need assistance, contact us at support@pocketagency.com.
+    `;
+    try {
+      await sendEmail(
+        email_address || "user@example.com",
+        "Subscription Payment Successful",
+        failureMessage
+      );
+      console.log("📧 Payment success email sent to:", email_address);
+    } catch (error) {
+      console.error("Failed to send payment success email (continuing anyway):", error);
+    }
   } else if (payment_status === "FAILED") {
     const retryAttempts = (subscriptionData.retryAttempts || 0) + 1;
     const maxRetries = 2;
@@ -138,7 +121,7 @@ export async function POST(req: NextRequest) {
       const failureMessage = `
         Dear Customer,
         Your initial subscription payment failed.
-        Please retry by updating your payment method at ${process.env.NEXT_PUBLIC_BASE_URL || "https://pocket-agency-swart.vercel.app"}/pricing.
+        Please retry by updating your payment method at ${process.env.NEXT_PUBLIC_BASE_URL || "https://pocket-agency.vercel.app"}/pricing.
         If you need assistance, contact us at support@pocketagency.com.
       `;
       try {
@@ -165,7 +148,7 @@ export async function POST(req: NextRequest) {
         Dear Customer,
         We attempted to process your subscription payment but it failed.
         We will retry again in 24 hours. Please ensure your payment method is up to date.
-        Update your payment method at ${process.env.NEXT_PUBLIC_BASE_URL || "https://pocket-agency-swart.vercel.app"}/billing.
+        Update your payment method at ${process.env.NEXT_PUBLIC_BASE_URL || "https://pocket-agency.vercel.app"}/billing.
       `;
       try {
         await sendEmail(
@@ -240,7 +223,7 @@ export async function POST(req: NextRequest) {
       const cancellationMessage = `
         Dear Customer,
         Your Pocket Agency subscription has been cancelled due to repeated payment failures.
-        Please resubscribe at ${process.env.NEXT_PUBLIC_BASE_URL || "https://pocket-agency-swart.vercel.app"}/pricing to continue using our services.
+        Please resubscribe at ${process.env.NEXT_PUBLIC_BASE_URL || "https://pocket-agency.vercel.app"}/pricing to continue using our services.
       `;
       try {
         await sendEmail(

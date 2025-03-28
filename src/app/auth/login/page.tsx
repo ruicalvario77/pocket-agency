@@ -34,6 +34,7 @@ export default function Login() {
       }
 
       const role = userDoc.data()?.role;
+      const onboardingCompleted = userDoc.data()?.onboardingCompleted;
 
       // Check email verification for admins and contractors
       if (role === "admin" || role === "contractor") {
@@ -45,13 +46,15 @@ export default function Login() {
         }
       }
 
-      // Redirect based on role
+      // Redirect based on role and onboarding status
       if (role === "superadmin") {
         router.push("/superadmin");
       } else if (role === "admin") {
         router.push("/admin");
+      } else if (!onboardingCompleted) {
+        router.push("/onboarding");
       } else {
-        router.push("/dashboard"); // Customers and contractors go to /dashboard
+        router.push("/dashboard");
       }
     } catch (err) {
       const authError = err as AuthError;

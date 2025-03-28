@@ -2,8 +2,8 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { auth, db } from "@/app/firebase/firebaseConfig";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { onAuthStateChanged, createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 const PricingPage = () => {
@@ -11,6 +11,8 @@ const PricingPage = () => {
   const [paymentData, setPaymentData] = useState<[string, string][] | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [password, setPassword] = useState("");
   const [userRole, setUserRole] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const formRef = useRef<HTMLFormElement>(null);
@@ -42,8 +44,10 @@ const PricingPage = () => {
           }
           return;
         }
+
+        // Pre-fill email for logged-in users
+        setEmail(user.email || "");
       }
-      // If no user is logged in, allow the page to load (no redirect)
       setAuthLoading(false);
     });
 
@@ -51,21 +55,54 @@ const PricingPage = () => {
   }, [router]);
 
   const handleSubscribe = async (plan: "basic" | "pro") => {
-    if (!email && !auth.currentUser) {
-      // If the user is not logged in, redirect to login before subscribing
-      router.push("/auth/login");
+    if (!email) {
+      alert("Please enter an email address to subscribe.");
+      return;
+    }
+
+    if (!auth.currentUser && (!fullName || !password)) {
+      alert("Please enter your full name and password to subscribe.");
       return;
     }
 
     setLoading(true);
-    const user = auth.currentUser;
+    let user = auth.currentUser;
     let idToken: string | null = null;
 
-    if (user) {
-      idToken = await user.getIdToken();
-    }
-
     try {
+      if (!user) {
+        // Create a new user if not logged in
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        user = userCredential.user;
+
+        // Create user document in Firestore
+        await setDoc(doc(db, "users", user.uid), {
+          email,
+          fullName,
+          role: "customer",
+          onboardingCompleted: false,
+        });
+
+        // Send verification email
+        await fetch("/api/send-verification-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, userId: user.uid }),
+        });
+
+        // Create a pending subscription
+        const subscriptionRef = doc(db, "subscriptions", user.uid);
+        await setDoc(subscriptionRef, {
+          userId: user.uid,
+          email_address: email,
+          plan,
+          status: "pending",
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      idToken = await user!.getIdToken();
+
       const response = await fetch("/api/payfast-subscribe", {
         method: "POST",
         headers: {
@@ -116,15 +153,37 @@ const PricingPage = () => {
         </p>
 
         <div className="text-center mb-8">
-          <input
-            type="email"
-            placeholder="Enter your email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="border p-2 rounded w-64"
-            required
-            disabled={!!auth.currentUser} // Disable if logged in
-          />
+          {!auth.currentUser && (
+            <>
+              <input
+                type="text"
+                placeholder="Full Name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="border p-2 rounded w-64 mb-2"
+                required
+                disabled={loading}
+              />
+              <input
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="border p-2 rounded w-64 mb-2"
+                required
+                disabled={loading}
+              />
+              <input
+                type="password"
+                placeholder="Create a password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="border p-2 rounded w-64 mb-2"
+                required
+                disabled={loading}
+              />
+            </>
+          )}
           {auth.currentUser && (
             <p className="text-sm text-gray-600 mt-2">Using {auth.currentUser.email}</p>
           )}
