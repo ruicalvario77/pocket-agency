@@ -5,14 +5,16 @@ import { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "@/app/firebase/firebaseConfig";
 import { doc, setDoc } from "firebase/firestore";
+import { useRouter } from "next/navigation";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [plan, setPlan] = useState<"basic" | "pro" | "">(""); // Add plan selection
+  const [plan, setPlan] = useState<"basic" | "pro" | "">("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,18 +35,23 @@ export default function Signup() {
       await setDoc(doc(db, "users", user.uid), {
         email,
         fullName,
-        role: "customer",
+        role: "customer", // Always set role to customer
         onboardingCompleted: false,
       });
 
-      // Send verification email
-      await fetch("/api/send-verification-email", {
+      // Send verification email and handle response
+      const emailResponse = await fetch("/api/send-verification-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, userId: user.uid }),
       });
 
-      // Create a pending subscription
+      if (!emailResponse.ok) {
+        const errorData = await emailResponse.json();
+        throw new Error(errorData.error || "Failed to send verification email");
+      }
+
+      // Proceed with payment for customers
       const subscriptionRef = doc(db, "subscriptions", user.uid);
       await setDoc(subscriptionRef, {
         userId: user.uid,
@@ -54,7 +61,6 @@ export default function Signup() {
         createdAt: new Date().toISOString(),
       });
 
-      // Redirect to PayFast for payment
       const response = await fetch("/api/payfast-subscribe", {
         method: "POST",
         headers: {

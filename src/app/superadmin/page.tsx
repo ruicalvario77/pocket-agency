@@ -16,7 +16,7 @@ interface UserData {
   hasSeenWelcome?: boolean;
 }
 
-// Placeholder components for each section
+// Analytics Section
 const AnalyticsSection = () => (
   <div className="p-4">
     <h2 className="text-2xl font-semibold mb-4">Analytics</h2>
@@ -24,6 +24,7 @@ const AnalyticsSection = () => (
   </div>
 );
 
+// Customers Section
 const CustomersSection = () => (
   <div className="p-4">
     <h2 className="text-2xl font-semibold mb-4">Customers</h2>
@@ -31,6 +32,7 @@ const CustomersSection = () => (
   </div>
 );
 
+// Contractors Section
 const ContractorsSection = () => (
   <div className="p-4">
     <h2 className="text-2xl font-semibold mb-4">Contractors</h2>
@@ -38,12 +40,72 @@ const ContractorsSection = () => (
   </div>
 );
 
-const AdminsSection = () => (
-  <div className="p-4">
-    <h2 className="text-2xl font-semibold mb-4">Admins</h2>
-    <p>Admin invitation, allocation to customers, and performance oversight will be displayed here.</p>
-  </div>
-);
+// Admins Section
+const AdminsSection = () => {
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleInviteAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/invite-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to send invitation");
+      }
+
+      setSuccess("Invitation sent successfully!");
+      setEmail("");
+    } catch (err: unknown) {
+      let errorMessage = "An unexpected error occurred";
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
+      console.error("Invite admin error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="p-4">
+      <h2 className="text-2xl font-semibold mb-4">Admins</h2>
+      <p className="text-gray-600 mb-4">Invite new admins to join the platform.</p>
+      {error && <p className="text-red-500 mb-4">{error}</p>}
+      {success && <p className="text-green-500 mb-4">{success}</p>}
+      <form onSubmit={handleInviteAdmin} className="flex flex-col gap-3 max-w-md">
+        <input
+          type="email"
+          placeholder="Enter admin email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="border p-2 rounded w-full"
+          required
+          disabled={loading}
+        />
+        <button
+          type="submit"
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
+          disabled={loading}
+        >
+          {loading ? "Sending..." : "Send Invitation"}
+        </button>
+      </form>
+    </div>
+  );
+};
 
 export default function SuperadminDashboard() {
   const [user, loading] = useAuthState(auth);
