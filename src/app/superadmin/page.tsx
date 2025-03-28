@@ -50,7 +50,7 @@ export default function SuperadminDashboard() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("analytics");
   const [showWelcome, setShowWelcome] = useState(false);
-  const [userData, setUserData] = useState<UserData | null>(null); // Use UserData interface instead of any
+  const [userData, setUserData] = useState<UserData | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -70,7 +70,7 @@ export default function SuperadminDashboard() {
         const role = userDoc.data()?.role;
         console.log("User role:", role);
         setUserRole(role);
-        setUserData(userDoc.data() as UserData); // Cast to UserData
+        setUserData(userDoc.data() as UserData);
 
         if (role !== "superadmin") {
           if (role === "admin") {
@@ -94,6 +94,7 @@ export default function SuperadminDashboard() {
         const userDoc = await getDoc(userDocRef);
         const hasSeenWelcome = userDoc.data()?.hasSeenWelcome;
         console.log("hasSeenWelcome:", hasSeenWelcome);
+        console.log("hasSeenWelcome type:", typeof hasSeenWelcome);
 
         if (hasSeenWelcome === undefined || !hasSeenWelcome) {
           console.log("Showing welcome message");
@@ -107,6 +108,15 @@ export default function SuperadminDashboard() {
     };
     checkWelcomeMessage();
   }, [user, userRole]);
+
+  const handleCloseWelcome = async () => {
+    if (user) {
+      const userDocRef = doc(db, "users", user.uid);
+      // Update both hasSeenWelcome and onboardingCompleted to true
+      await setDoc(userDocRef, { hasSeenWelcome: true, onboardingCompleted: true }, { merge: true });
+      setShowWelcome(false);
+    }
+  };
 
   if (loading) {
     return <div className="text-center text-gray-500 mt-10">Loading...</div>;
@@ -140,7 +150,7 @@ export default function SuperadminDashboard() {
               Download Guide
             </a>
             <button
-              onClick={() => setShowWelcome(false)}
+              onClick={handleCloseWelcome}
               className="ml-4 px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
             >
               Close
