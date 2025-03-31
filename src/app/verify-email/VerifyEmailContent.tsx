@@ -3,9 +3,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { auth } from "@/app/firebase/firebaseConfig";
-import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/app/firebase/firebaseConfig";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 export default function VerifyEmailContent() {
   const [message, setMessage] = useState("");
@@ -23,33 +22,29 @@ export default function VerifyEmailContent() {
       }
 
       try {
-        // Check if the user is logged in
-        const user = auth.currentUser;
-        if (user && user.uid === userId) {
-          // Get the user's custom claims
-          const customClaims = (await user.getIdTokenResult()).claims;
-          if (customClaims.verificationToken === token) {
-            // Clear the verification token
-            await fetch("/api/clear-verification-token", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ userId }),
-            });
-            setMessage("Email verified successfully! Redirecting to onboarding...");
-            // Redirect to onboarding if not completed, otherwise to dashboard
-            const userDocRef = doc(db, "users", user.uid);
-            const userDoc = await getDoc(userDocRef);
-            const onboardingCompleted = userDoc.data()?.onboardingCompleted;
-            setTimeout(() => {
-              router.push(onboardingCompleted ? "/dashboard" : "/onboarding");
-            }, 3000);
-          } else {
-            setError("Invalid verification token");
-          }
-        } else {
-          setError("Please log in to verify your email");
-          router.push("/auth/login");
+        // Fetch the user document from Firestore
+        const userDocRef = doc(db, "users", userId);
+        const userDoc = await getDoc(userDocRef);
+        if (!userDoc.exists()) {
+          setError("User not found");
+          return;
         }
+
+        const userData = userDoc.data();
+        const expectedToken = Buffer.from(`${userId}:${userData.email}`).toString("base64");
+
+        if (token !== expectedToken) {
+          setError("Invalid verification token");
+          return;
+        }
+
+        // Mark the email as verified in Firestore
+        await updateDoc(userDocRef, { emailVerified: true });
+
+        setMessage("Email verified successfully! Redirecting to login...");
+        setTimeout(() => {
+          router.push("/auth/login");
+        }, 3000);
       } catch (err: unknown) {
         let errorMessage = "An unexpected error occurred";
         if (err instanceof Error) {

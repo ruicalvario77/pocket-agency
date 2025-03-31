@@ -86,10 +86,23 @@ const AdminSignupContent = () => {
         hasSeenWelcome: false,
       });
 
+      // Send verification email
+      const emailResponse = await fetch("/api/send-verification-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, userId: user.uid }),
+      });
+
+      if (!emailResponse.ok) {
+        const errorData = await emailResponse.json();
+        throw new Error(errorData.error || "Failed to send verification email");
+      }
+
       // Mark the invitation as used
       await setDoc(doc(db, "admin_invitations", token), { used: true }, { merge: true });
 
-      router.push("/admin");
+      // Redirect to a verification prompt page instead of logging in immediately
+      router.push("/verify-email-prompt");
     } catch (err: unknown) {
       let errorMessage = "An unexpected error occurred";
       if (err instanceof Error) {
