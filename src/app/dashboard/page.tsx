@@ -18,8 +18,9 @@ import {
   getDoc,
   Timestamp,
 } from "firebase/firestore";
-import { User } from "firebase/auth"; // Import User type
+import { User } from "firebase/auth";
 
+// Define the Project interface
 interface Project {
   id: string;
   userId: string;
@@ -27,15 +28,17 @@ interface Project {
   description: string;
   status: string;
   createdAt: Date;
+  satisfactionRating?: number; // Add satisfactionRating field
 }
 
+// Define the Subscription interface
 interface Subscription {
   plan: string;
   status: string;
 }
 
 export default function Dashboard() {
-  const [user, setUser] = useState<User | null>(null); // Use User type instead of any
+  const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [projectTitle, setProjectTitle] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
@@ -47,6 +50,7 @@ export default function Dashboard() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
+  const [ratingError, setRatingError] = useState("");
   const router = useRouter();
   const db = getFirestore();
 
@@ -65,7 +69,6 @@ export default function Dashboard() {
 
       setUser(currentUser);
 
-      // Fetch user role
       const userDocRef = doc(db, "users", currentUser.uid);
       const userDoc = await getDoc(userDocRef);
       if (!userDoc.exists()) {
@@ -76,7 +79,6 @@ export default function Dashboard() {
       const role = userDoc.data()?.role;
       setUserRole(role);
 
-      // Redirect admins and superadmins to their respective dashboards
       if (role === "admin") {
         router.push("/admin");
         return;
@@ -85,7 +87,6 @@ export default function Dashboard() {
         return;
       }
 
-      // For customers: Check subscription and onboarding
       if (role === "customer") {
         const subQuery = query(
           collection(db, "subscriptions"),
@@ -111,12 +112,11 @@ export default function Dashboard() {
         }
       }
 
-      // For contractors: No subscription or onboarding check (for now)
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [router, db]); // Add db to dependency array
+  }, [router, db]);
 
   useEffect(() => {
     if (!user || loading) return;
@@ -130,15 +130,19 @@ export default function Dashboard() {
           : new Date(data.createdAt);
         return {
           id: doc.id,
-          ...data,
+          userId: data.userId,
+          title: data.title,
+          description: data.description,
+          status: data.status,
           createdAt,
+          satisfactionRating: data.satisfactionRating, // Include satisfactionRating
         };
       }) as Project[];
       setProjects(projectList);
     });
 
     return () => unsubscribe();
-  }, [user, loading, db]); // Add db to dependency array
+  }, [user, loading, db]);
 
   const handleSubmitProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,6 +201,25 @@ export default function Dashboard() {
     }
   };
 
+  const handleRateProject = async (projectId: string, rating: number) => {
+    setRatingError("");
+
+    if (rating < 1 || rating > 5) {
+      setRatingError("Rating must be between 1 and 5");
+      return;
+    }
+
+    try {
+      const projectDocRef = doc(db, "projects", projectId);
+      await updateDoc(projectDocRef, {
+        satisfactionRating: rating,
+      });
+    } catch (err: unknown) {
+      setRatingError("Failed to submit rating");
+      console.error("Error submitting rating:", err);
+    }
+  };
+
   if (loading) {
     return <div className="text-center mt-20 text-xl">Loading...</div>;
   }
@@ -252,6 +275,7 @@ export default function Dashboard() {
 
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Your Projects</h3>
+              {ratingError && <p className="text-red-500 mb-4">{ratingError}</p>}
               {projects.length === 0 ? (
                 <p className="text-gray-600">No projects submitted yet.</p>
               ) : (
@@ -280,6 +304,32 @@ export default function Dashboard() {
                             <p className="text-sm text-gray-500 mt-2">
                               Created: {project.createdAt.toLocaleDateString()}
                             </p>
+                            {project.status === "completed" && (
+                              <div className="mt-2">
+                                <p className="text-sm text-gray-500">Satisfaction Rating:</p>
+                                {project.satisfactionRating ? (
+                                  <span className="text-yellow-500">
+                                    {project.satisfactionRating} / 5
+                                  </span>
+                                ) : (
+                                  <div className="flex gap-1">
+                                    {[1, 2, 3, 4, 5].map(rating => (
+                                      <button
+                                        key={rating}
+                                        onClick={() => handleRateProject(project.id, rating)}
+                                        className={`text-2xl ${
+                                          rating <= (project.satisfactionRating || 0)
+                                            ? "text-yellow-500"
+                                            : "text-gray-300"
+                                        } hover:text-yellow-400 transition`}
+                                      >
+                                        ★
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             <div className="mt-3 flex gap-2">
                               <button
                                 onClick={() => handleEditProject(project)}
@@ -355,7 +405,7 @@ export default function Dashboard() {
           <div className="bg-white rounded-lg p-6 shadow-lg w-full max-w-md">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Confirm Deletion</h2>
             <p className="text-gray-600 mb-4">
-              Are you sure you want to delete <strong>&quot;{deletingProject.title}&quot;</strong>? This action cannot be undone.
+              Are you sure you want to delete <strong>"{deletingProject.title}"</strong>? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
               <button
