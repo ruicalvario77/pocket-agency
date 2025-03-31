@@ -1,12 +1,13 @@
 // src/app/admin/page.tsx
 "use client";
-import { useEffect, useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db } from "@/app/firebase/firebaseConfig";
-import { collection, onSnapshot, updateDoc, doc, getDoc, Timestamp } from "firebase/firestore";
+import { collection, onSnapshot, updateDoc, doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import React from "react";
-import { FaGripVertical, FaSearch } from "react-icons/fa"; // Removed FaClock, FaHourglassHalf, FaCheckCircle
+import { FaGripVertical, FaSearch } from "react-icons/fa";
 import {
   DndContext,
   closestCenter,
@@ -24,6 +25,15 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+
+// Define the UserData interface
+interface UserData {
+  email: string;
+  fullName: string;
+  role: string;
+  onboardingCompleted: boolean;
+  hasSeenWelcome?: boolean;
+}
 
 interface Project {
   id: string;
@@ -130,6 +140,8 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [userData, setUserData] = useState<UserData | null>(null);
   const router = useRouter();
 
   const sensors = useSensors(
@@ -151,7 +163,7 @@ export default function AdminDashboard() {
       try {
         const userDocRef = doc(db, "users", user.uid);
         const docSnap = await getDoc(userDocRef);
-        const userData = docSnap.data();
+        const userData = docSnap.data() as UserData;
 
         if (!docSnap.exists()) {
           router.push("/auth/login");
@@ -160,6 +172,7 @@ export default function AdminDashboard() {
 
         const role = userData?.role;
         setUserRole(role);
+        setUserData(userData);
 
         if (role === "superadmin") {
           router.push("/superadmin");
@@ -167,6 +180,20 @@ export default function AdminDashboard() {
         } else if (role !== "admin") {
           router.push("/dashboard");
           return;
+        }
+
+        // Check if this is the first login for the admin
+        const hasSeenWelcome = userData?.hasSeenWelcome;
+        console.log("hasSeenWelcome:", hasSeenWelcome);
+        console.log("hasSeenWelcome type:", typeof hasSeenWelcome);
+
+        if (hasSeenWelcome === undefined || !hasSeenWelcome) {
+          console.log("Showing welcome message");
+          setShowWelcome(true);
+          // Update Firestore to mark welcome as seen
+          await setDoc(userDocRef, { hasSeenWelcome: true }, { merge: true });
+        } else {
+          console.log("Welcome message already seen");
         }
 
         // User is an admin, proceed with loading projects
@@ -204,6 +231,15 @@ export default function AdminDashboard() {
 
     checkUserRole();
   }, [user, loadingAuth, router]);
+
+  const handleCloseWelcome = async () => {
+    if (user) {
+      const userDocRef = doc(db, "users", user.uid);
+      // Update both hasSeenWelcome and onboardingCompleted to true
+      await setDoc(userDocRef, { hasSeenWelcome: true, onboardingCompleted: true }, { merge: true });
+      setShowWelcome(false);
+    }
+  };
 
   // Filter and sort projects
   const filteredProjects = projects
@@ -341,6 +377,33 @@ export default function AdminDashboard() {
             Logout
           </button>
         </div>
+
+        {/* Welcome Message and Guide */}
+        {showWelcome && (
+          <div className="bg-blue-100 p-6 rounded-lg mb-6">
+            <h2 className="text-2xl font-semibold text-blue-800 mb-4">Welcome, {userData?.fullName || "Admin"}!</h2>
+            <p className="text-gray-700 mb-4">
+              Thank you for joining Pocket Agency as an Admin. This portal allows you to manage customer projects and oversee contractor workflows.
+            </p>
+            <p className="text-gray-700 mb-4">
+              To get started, explore the dashboard. For a detailed guide, download our Admin Guide PDF:
+            </p>
+            <a
+              href="/admin-guide.pdf"
+              className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Download Guide
+            </a>
+            <button
+              onClick={handleCloseWelcome}
+              className="ml-4 px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+            >
+              Close
+            </button>
+          </div>
+        )}
 
         <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-yellow-50 p-4 rounded-lg shadow-sm">
