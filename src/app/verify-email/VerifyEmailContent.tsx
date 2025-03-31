@@ -31,15 +31,18 @@ export default function VerifyEmailContent() {
         }
 
         const userData = userDoc.data();
-        const expectedToken = Buffer.from(`${userId}:${userData.email}`).toString("base64");
+        const storedToken = userData.verificationToken;
 
-        if (token !== expectedToken) {
+        if (!storedToken || token !== storedToken) {
           setError("Invalid verification token");
           return;
         }
 
-        // Mark the email as verified in Firestore
-        await updateDoc(userDocRef, { emailVerified: true });
+        // Mark the email as verified and clear the verification token
+        await updateDoc(userDocRef, {
+          emailVerified: true,
+          verificationToken: null,
+        });
 
         setMessage("Email verified successfully! Redirecting to login...");
         setTimeout(() => {
