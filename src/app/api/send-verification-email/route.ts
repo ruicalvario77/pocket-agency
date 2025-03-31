@@ -1,8 +1,11 @@
 // src/app/api/send-verification-email/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/app/firebase/admin";
+import { db } from "@/app/firebase/admin";
 import { sendEmail } from "@/app/utils/email";
 import nodeCrypto from "crypto";
+
+// Generate a random token
+const generateToken = () => nodeCrypto.randomBytes(16).toString("hex");
 
 export async function POST(req: NextRequest) {
   const { email, userId } = await req.json();
@@ -12,21 +15,22 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Generate a verification token
-    const verificationToken = nodeCrypto.randomBytes(16).toString("hex");
+    // Generate a random token
+    const token = generateToken();
 
-    // Store the token in Firestore (or another collection if preferred)
-    await auth.setCustomUserClaims(userId, { verificationToken });
+    // Store the token in the user's Firestore document
+    const userDocRef = db.collection("users").doc(userId);
+    await userDocRef.update({ verificationToken: token });
 
     // Create the verification link
     const verificationLink = `${
-      process.env.NEXT_PUBLIC_BASE_URL || "https://pocket-agency.vercel.app"
-    }/verify-email?token=${verificationToken}&userId=${userId}`;
+      process.env.NEXT_PUBLIC_BASE_URL || "https://pocket-agency-swart.vercel.app"
+    }/verify-email?token=${token}&userId=${userId}`;
 
     // Send the verification email
     await sendEmail(
       email,
-      "Verify Your Pocket Agency Account",
+      "Verify Your Email - Pocket Agency",
       `Please verify your email by clicking this link: ${verificationLink}`
     );
 
