@@ -5,15 +5,17 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db } from "../firebase/firebaseConfig";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 
 // Define the UserData interface
 interface UserData {
+  id: string; // Add id field
   email: string;
   fullName: string;
   role: string;
   onboardingCompleted: boolean;
   hasSeenWelcome?: boolean;
+  assignedAdmin?: string;
 }
 
 // Analytics Section
@@ -25,12 +27,152 @@ const AnalyticsSection = () => (
 );
 
 // Customers Section
-const CustomersSection = () => (
-  <div className="p-4">
-    <h2 className="text-2xl font-semibold mb-4">Customers</h2>
-    <p>Customer subscriptions, tasks, satisfaction tracking, and messaging oversight will be displayed here.</p>
-  </div>
-);
+const CustomersSection = () => {
+  const [customers, setCustomers] = useState<UserData[]>([]);
+  const [admins, setAdmins] = useState<UserData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch customers
+        const customersSnapshot = await getDocs(collection(db, "users"));
+        const customersData = customersSnapshot.docs
+          .map(doc => {
+            const data = doc.data();
+            // Validate required fields
+            if (
+              typeof data.email !== "string" ||
+              typeof data.fullName !== "string" ||
+              typeof data.role !== "string" ||
+              typeof data.onboardingCompleted !== "boolean"
+            ) {
+              return null; // Skip invalid documents
+            }
+            return {
+              id: doc.id,
+              email: data.email,
+              fullName: data.fullName,
+              role: data.role,
+              onboardingCompleted: data.onboardingCompleted,
+              hasSeenWelcome: data.hasSeenWelcome,
+              assignedAdmin: data.assignedAdmin,
+            } as UserData;
+          })
+          .filter((user): user is UserData => user !== null && user.role === "customer");
+        setCustomers(customersData);
+
+        // Fetch admins
+        const adminsSnapshot = await getDocs(collection(db, "users"));
+        const adminsData = adminsSnapshot.docs
+          .map(doc => {
+            const data = doc.data();
+            // Validate required fields
+            if (
+              typeof data.email !== "string" ||
+              typeof data.fullName !== "string" ||
+              typeof data.role !== "string" ||
+              typeof data.onboardingCompleted !== "boolean"
+            ) {
+              return null; // Skip invalid documents
+            }
+            return {
+              id: doc.id,
+              email: data.email,
+              fullName: data.fullName,
+              role: data.role,
+              onboardingCompleted: data.onboardingCompleted,
+              hasSeenWelcome: data.hasSeenWelcome,
+              assignedAdmin: data.assignedAdmin,
+            } as UserData;
+          })
+          .filter((user): user is UserData => user !== null && user.role === "admin");
+        setAdmins(adminsData);
+
+        setLoading(false);
+      } catch (err: unknown) {
+        let errorMessage = "An unexpected error occurred";
+        if (err instanceof Error) {
+          errorMessage = err.message;
+        }
+        setError(errorMessage);
+        console.error("Error fetching data:", err);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const handleAssignAdmin = async (customerId: string, adminId: string) => {
+    try {
+      const customerDocRef = doc(db, "users", customerId);
+      await setDoc(customerDocRef, { assignedAdmin: adminId }, { merge: true });
+      setCustomers(customers.map(customer =>
+        customer.id === customerId ? { ...customer, assignedAdmin: adminId } : customer
+      ));
+    } catch (err: unknown) {
+      let errorMessage = "An unexpected error occurred";
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
+      console.error("Error assigning admin:", err);
+    }
+  };
+
+  if (loading) return <div className="p-4">Loading...</div>;
+  if (error) return <div className="p-4 text-red-500">{error}</div>;
+
+  return (
+    <div className="p-4">
+      <h2 className="text-2xl font-semibold mb-4">Customers</h2>
+      <p className="text-gray-600 mb-4">Manage customer assignments to admins.</p>
+      {customers.length === 0 ? (
+        <p className="text-gray-500">No customers found.</p>
+      ) : (
+        <table className="w-full border-collapse border border-gray-300">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="border border-gray-300 p-2">Email</th>
+              <th className="border border-gray-300 p-2">Full Name</th>
+              <th className="border border-gray-300 p-2">Assigned Admin</th>
+              <th className="border border-gray-300 p-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {customers.map(customer => (
+              <tr key={customer.id}>
+                <td className="border border-gray-300 p-2">{customer.email}</td>
+                <td className="border border-gray-300 p-2">{customer.fullName}</td>
+                <td className="border border-gray-300 p-2">
+                  {customer.assignedAdmin
+                    ? admins.find(admin => admin.id === customer.assignedAdmin)?.fullName || "Unknown"
+                    : "None"}
+                </td>
+                <td className="border border-gray-300 p-2">
+                  <select
+                    value={customer.assignedAdmin || ""}
+                    onChange={(e) => handleAssignAdmin(customer.id, e.target.value)}
+                    className="border p-1 rounded"
+                  >
+                    <option value="">None</option>
+                    {admins.map(admin => (
+                      <option key={admin.id} value={admin.id}>
+                        {admin.fullName}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+};
 
 // Contractors Section
 const ContractorsSection = () => (
