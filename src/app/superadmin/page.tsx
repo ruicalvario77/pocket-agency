@@ -5,17 +5,34 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db } from "../firebase/firebaseConfig";
-import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs, updateDoc } from "firebase/firestore";
 
 // Define the UserData interface
 interface UserData {
-  id: string; // Add id field
+  id: string;
   email: string;
   fullName: string;
   role: string;
   onboardingCompleted: boolean;
   hasSeenWelcome?: boolean;
   assignedAdmin?: string;
+  emailVerified?: boolean;
+  verificationToken?: string;
+}
+
+// Define the Subscription interface
+interface Subscription {
+  id: string;
+  userId: string;
+  email_address: string;
+  plan: string;
+  status: string;
+  createdAt: string;
+  updatedAt?: string;
+  nextBillingDate?: string;
+  amount?: string;
+  retryAttempts?: number;
+  cancellationReason?: string;
 }
 
 // Analytics Section
@@ -30,8 +47,10 @@ const AnalyticsSection = () => (
 const CustomersSection = () => {
   const [customers, setCustomers] = useState<UserData[]>([]);
   const [admins, setAdmins] = useState<UserData[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [subTab, setSubTab] = useState<"admin-allocation" | "subscriptions">("admin-allocation");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -41,14 +60,13 @@ const CustomersSection = () => {
         const customersData = customersSnapshot.docs
           .map(doc => {
             const data = doc.data();
-            // Validate required fields
             if (
               typeof data.email !== "string" ||
               typeof data.fullName !== "string" ||
               typeof data.role !== "string" ||
               typeof data.onboardingCompleted !== "boolean"
             ) {
-              return null; // Skip invalid documents
+              return null;
             }
             return {
               id: doc.id,
@@ -58,6 +76,8 @@ const CustomersSection = () => {
               onboardingCompleted: data.onboardingCompleted,
               hasSeenWelcome: data.hasSeenWelcome,
               assignedAdmin: data.assignedAdmin,
+              emailVerified: data.emailVerified,
+              verificationToken: data.verificationToken,
             } as UserData;
           })
           .filter((user): user is UserData => user !== null && user.role === "customer");
@@ -68,14 +88,13 @@ const CustomersSection = () => {
         const adminsData = adminsSnapshot.docs
           .map(doc => {
             const data = doc.data();
-            // Validate required fields
             if (
               typeof data.email !== "string" ||
               typeof data.fullName !== "string" ||
               typeof data.role !== "string" ||
               typeof data.onboardingCompleted !== "boolean"
             ) {
-              return null; // Skip invalid documents
+              return null;
             }
             return {
               id: doc.id,
@@ -85,10 +104,43 @@ const CustomersSection = () => {
               onboardingCompleted: data.onboardingCompleted,
               hasSeenWelcome: data.hasSeenWelcome,
               assignedAdmin: data.assignedAdmin,
+              emailVerified: data.emailVerified,
+              verificationToken: data.verificationToken,
             } as UserData;
           })
           .filter((user): user is UserData => user !== null && user.role === "admin");
         setAdmins(adminsData);
+
+        // Fetch subscriptions
+        const subscriptionsSnapshot = await getDocs(collection(db, "subscriptions"));
+        const subscriptionsData = subscriptionsSnapshot.docs
+          .map(doc => {
+            const data = doc.data();
+            if (
+              typeof data.userId !== "string" ||
+              typeof data.email_address !== "string" ||
+              typeof data.plan !== "string" ||
+              typeof data.status !== "string" ||
+              typeof data.createdAt !== "string"
+            ) {
+              return null;
+            }
+            return {
+              id: doc.id,
+              userId: data.userId,
+              email_address: data.email_address,
+              plan: data.plan,
+              status: data.status,
+              createdAt: data.createdAt,
+              updatedAt: data.updatedAt,
+              nextBillingDate: data.nextBillingDate,
+              amount: data.amount,
+              retryAttempts: data.retryAttempts,
+              cancellationReason: data.cancellationReason,
+            } as Subscription;
+          })
+          .filter((sub): sub is Subscription => sub !== null);
+        setSubscriptions(subscriptionsData);
 
         setLoading(false);
       } catch (err: unknown) {
@@ -122,53 +174,216 @@ const CustomersSection = () => {
     }
   };
 
+  const handleSubscriptionAction = async (subscriptionId: string, action: "pause" | "activate" | "cancel") => {
+    try {
+      const subscription = subscriptions.find(sub => sub.id === subscriptionId);
+      if (!subscription) {
+        throw new Error("Subscription not found");
+      }
+
+      // Determine the API endpoint based on the action
+      let endpoint = "";
+      let newStatus = "";
+      switch (action) {
+        case "pause":
+          endpoint = "/api/payfast-pause-subscription";
+          newStatus = "paused";
+          break;
+        case "activate":
+          endpoint = "/api/payfast-activate-subscription";
+          newStatus = "active";
+          break;
+        case "cancel":
+          endpoint = "/api/payfast-cancel-subscription";
+          newStatus = "cancelled";
+          break;
+        default:
+          throw new Error("Invalid action");
+      }
+
+      // Call the PayFast API endpoint
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscriptionId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to ${action} subscription`);
+      }
+
+      // Update the subscription status in Firestore
+      const subscriptionDocRef = doc(db, "subscriptions", subscriptionId);
+      await updateDoc(subscriptionDocRef, {
+        status: newStatus,
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Update the local state
+      setSubscriptions(subscriptions.map(sub =>
+        sub.id === subscriptionId ? { ...sub, status: newStatus, updatedAt: new Date().toISOString() } : sub
+      ));
+
+      // Send an email notification to the customer
+      await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: subscription.email_address,
+          subject: `Subscription ${action.charAt(0).toUpperCase() + action.slice(1)}d - Pocket Agency`,
+          text: `Dear Customer,\n\nYour subscription (${subscription.plan}) has been ${action}ed.\n\nIf you have any questions, please contact support@pocketagency.com.\n\nBest regards,\nPocket Agency Team`,
+        }),
+      });
+    } catch (err: unknown) {
+      let errorMessage = "An unexpected error occurred";
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
+      console.error(`Error performing ${action} on subscription:`, err);
+    }
+  };
+
   if (loading) return <div className="p-4">Loading...</div>;
   if (error) return <div className="p-4 text-red-500">{error}</div>;
 
   return (
     <div className="p-4">
       <h2 className="text-2xl font-semibold mb-4">Customers</h2>
-      <p className="text-gray-600 mb-4">Manage customer assignments to admins.</p>
-      {customers.length === 0 ? (
-        <p className="text-gray-500">No customers found.</p>
-      ) : (
-        <table className="w-full border-collapse border border-gray-300">
-          <thead>
-            <tr className="bg-gray-200">
-              <th className="border border-gray-300 p-2">Email</th>
-              <th className="border border-gray-300 p-2">Full Name</th>
-              <th className="border border-gray-300 p-2">Assigned Admin</th>
-              <th className="border border-gray-300 p-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {customers.map(customer => (
-              <tr key={customer.id}>
-                <td className="border border-gray-300 p-2">{customer.email}</td>
-                <td className="border border-gray-300 p-2">{customer.fullName}</td>
-                <td className="border border-gray-300 p-2">
-                  {customer.assignedAdmin
-                    ? admins.find(admin => admin.id === customer.assignedAdmin)?.fullName || "Unknown"
-                    : "None"}
-                </td>
-                <td className="border border-gray-300 p-2">
-                  <select
-                    value={customer.assignedAdmin || ""}
-                    onChange={(e) => handleAssignAdmin(customer.id, e.target.value)}
-                    className="border p-1 rounded"
-                  >
-                    <option value="">None</option>
-                    {admins.map(admin => (
-                      <option key={admin.id} value={admin.id}>
-                        {admin.fullName}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+
+      {/* Sub-Tabbed Navigation */}
+      <div className="flex border-b border-gray-300 mb-6">
+        <button
+          onClick={() => setSubTab("admin-allocation")}
+          className={`px-4 py-2 font-semibold ${
+            subTab === "admin-allocation" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"
+          }`}
+        >
+          Admin Allocation
+        </button>
+        <button
+          onClick={() => setSubTab("subscriptions")}
+          className={`px-4 py-2 font-semibold ${
+            subTab === "subscriptions" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"
+          }`}
+        >
+          Subscriptions Management
+        </button>
+      </div>
+
+      {/* Admin Allocation View */}
+      {subTab === "admin-allocation" && (
+        <>
+          <p className="text-gray-600 mb-4">Manage customer assignments to admins.</p>
+          {customers.length === 0 ? (
+            <p className="text-gray-500">No customers found.</p>
+          ) : (
+            <table className="w-full border-collapse border border-gray-300">
+              <thead>
+                <tr className="bg-gray-200">
+                  <th className="border border-gray-300 p-2">Email</th>
+                  <th className="border border-gray-300 p-2">Full Name</th>
+                  <th className="border border-gray-300 p-2">Assigned Admin</th>
+                  <th className="border border-gray-300 p-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customers.map(customer => (
+                  <tr key={customer.id}>
+                    <td className="border border-gray-300 p-2">{customer.email}</td>
+                    <td className="border border-gray-300 p-2">{customer.fullName}</td>
+                    <td className="border border-gray-300 p-2">
+                      {customer.assignedAdmin
+                        ? admins.find(admin => admin.id === customer.assignedAdmin)?.fullName || "Unknown"
+                        : "None"}
+                    </td>
+                    <td className="border border-gray-300 p-2">
+                      <select
+                        value={customer.assignedAdmin || ""}
+                        onChange={(e) => handleAssignAdmin(customer.id, e.target.value)}
+                        className="border p-1 rounded"
+                      >
+                        <option value="">None</option>
+                        {admins.map(admin => (
+                          <option key={admin.id} value={admin.id}>
+                            {admin.fullName}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
+
+      {/* Subscriptions Management View */}
+      {subTab === "subscriptions" && (
+        <>
+          <p className="text-gray-600 mb-4">Manage customer subscriptions.</p>
+          {subscriptions.length === 0 ? (
+            <p className="text-gray-500">No subscriptions found.</p>
+          ) : (
+            <table className="w-full border-collapse border border-gray-300">
+              <thead>
+                <tr className="bg-gray-200">
+                  <th className="border border-gray-300 p-2">Email</th>
+                  <th className="border border-gray-300 p-2">Plan</th>
+                  <th className="border border-gray-300 p-2">Status</th>
+                  <th className="border border-gray-300 p-2">Start Date</th>
+                  <th className="border border-gray-300 p-2">Next Billing Date</th>
+                  <th className="border border-gray-300 p-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {subscriptions.map(subscription => (
+                  <tr key={subscription.id}>
+                    <td className="border border-gray-300 p-2">{subscription.email_address}</td>
+                    <td className="border border-gray-300 p-2">{subscription.plan}</td>
+                    <td className="border border-gray-300 p-2">{subscription.status}</td>
+                    <td className="border border-gray-300 p-2">
+                      {new Date(subscription.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="border border-gray-300 p-2">
+                      {subscription.nextBillingDate
+                        ? new Date(subscription.nextBillingDate).toLocaleDateString()
+                        : "N/A"}
+                    </td>
+                    <td className="border border-gray-300 p-2 flex gap-2">
+                      {subscription.status === "active" && (
+                        <button
+                          onClick={() => handleSubscriptionAction(subscription.id, "pause")}
+                          className="px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                        >
+                          Pause
+                        </button>
+                      )}
+                      {subscription.status === "paused" && (
+                        <button
+                          onClick={() => handleSubscriptionAction(subscription.id, "activate")}
+                          className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                        >
+                          Activate
+                        </button>
+                      )}
+                      {(subscription.status === "active" || subscription.status === "paused") && (
+                        <button
+                          onClick={() => handleSubscriptionAction(subscription.id, "cancel")}
+                          className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
       )}
     </div>
   );
