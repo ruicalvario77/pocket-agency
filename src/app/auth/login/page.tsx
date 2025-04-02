@@ -26,7 +26,6 @@ export default function Login() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Fetch user role from Firestore
       const userDocRef = doc(db, "users", user.uid);
       const userDoc = await getDoc(userDocRef);
       if (!userDoc.exists()) {
@@ -40,7 +39,6 @@ export default function Login() {
       const onboardingCompleted = userDoc.data()?.onboardingCompleted;
       const emailVerified = userDoc.data()?.emailVerified;
 
-      // Check email verification for admins, contractors, and customers (but not superadmins)
       if (role !== "superadmin" && !emailVerified) {
         setError("Please verify your email before logging in.");
         await auth.signOut();
@@ -48,7 +46,6 @@ export default function Login() {
         return;
       }
 
-      // Redirect based on role and onboarding status
       if (role === "superadmin") {
         router.push("/superadmin");
       } else if (role === "admin") {
@@ -60,18 +57,22 @@ export default function Login() {
       }
     } catch (err) {
       const authError = err as AuthError;
-      switch (authError.code) {
-        case "auth/wrong-password":
-          setError("Incorrect password.");
-          break;
-        case "auth/user-not-found":
-          setError("No account found with this email.");
-          break;
-        case "auth/invalid-email":
-          setError("Invalid email format.");
-          break;
-        default:
-          setError("Login failed. Please try again.");
+      if (authError.code === "auth/network-request-failed") {
+        setError("Network error: Please check your internet connection and try again.");
+      } else {
+        switch (authError.code) {
+          case "auth/wrong-password":
+            setError("Incorrect password.");
+            break;
+          case "auth/user-not-found":
+            setError("No account found with this email.");
+            break;
+          case "auth/invalid-email":
+            setError("Invalid email format.");
+            break;
+          default:
+            setError("Login failed. Please try again.");
+        }
       }
       setLoading(false);
     }
@@ -82,11 +83,9 @@ export default function Login() {
     setResendLoading(true);
 
     try {
-      // Attempt to sign in to get the user (this will fail if email is not verified)
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Fetch user role from Firestore
       const userDocRef = doc(db, "users", user.uid);
       const userDoc = await getDoc(userDocRef);
       if (!userDoc.exists()) {
@@ -99,7 +98,6 @@ export default function Login() {
       const role = userDoc.data()?.role;
       const emailVerified = userDoc.data()?.emailVerified;
 
-      // Skip resend for superadmins or if already verified
       if (role === "superadmin" || emailVerified) {
         setResendMessage("Email is already verified or verification is not required.");
         await auth.signOut();
@@ -107,7 +105,6 @@ export default function Login() {
         return;
       }
 
-      // Resend verification email
       const emailResponse = await fetch("/api/send-verification-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -123,18 +120,22 @@ export default function Login() {
       await auth.signOut();
     } catch (err) {
       const authError = err as AuthError;
-      switch (authError.code) {
-        case "auth/wrong-password":
-          setError("Incorrect password.");
-          break;
-        case "auth/user-not-found":
-          setError("No account found with this email.");
-          break;
-        case "auth/invalid-email":
-          setError("Invalid email format.");
-          break;
-        default:
-          setError("Failed to resend verification email. Please try again.");
+      if (authError.code === "auth/network-request-failed") {
+        setError("Network error: Please check your internet connection and try again.");
+      } else {
+        switch (authError.code) {
+          case "auth/wrong-password":
+            setError("Incorrect password.");
+            break;
+          case "auth/user-not-found":
+            setError("No account found with this email.");
+            break;
+          case "auth/invalid-email":
+            setError("Invalid email format.");
+            break;
+          default:
+            setError("Failed to resend verification email. Please try again.");
+        }
       }
       setResendLoading(false);
     }

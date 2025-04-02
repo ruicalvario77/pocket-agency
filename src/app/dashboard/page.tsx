@@ -20,7 +20,6 @@ import {
 } from "firebase/firestore";
 import { User } from "firebase/auth";
 
-// Define the Project interface
 interface Project {
   id: string;
   userId: string;
@@ -31,7 +30,6 @@ interface Project {
   satisfactionRating?: number;
 }
 
-// Define the Subscription interface
 interface Subscription {
   plan: string;
   status: string;
@@ -49,6 +47,7 @@ export default function Dashboard() {
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [showToast, setShowToast] = useState(false);
   const [ratingError, setRatingError] = useState("");
   const router = useRouter();
@@ -69,50 +68,57 @@ export default function Dashboard() {
 
       setUser(currentUser);
 
-      const userDocRef = doc(db, "users", currentUser.uid);
-      const userDoc = await getDoc(userDocRef);
-      if (!userDoc.exists()) {
-        router.push("/auth/login");
-        return;
-      }
-
-      const role = userDoc.data()?.role;
-      setUserRole(role);
-
-      if (role === "admin") {
-        router.push("/admin");
-        return;
-      } else if (role === "superadmin") {
-        router.push("/superadmin");
-        return;
-      }
-
-      if (role === "customer") {
-        const subQuery = query(
-          collection(db, "subscriptions"),
-          where("userId", "==", currentUser.uid),
-          where("status", "==", "active")
-        );
-        const subSnapshot = await getDocs(subQuery);
-
-        if (subSnapshot.empty) {
-          router.push("/pricing");
+      try {
+        const userDocRef = doc(db, "users", currentUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (!userDoc.exists()) {
+          setError("User data not found.");
+          router.push("/auth/login");
           return;
         }
 
-        const subDoc = subSnapshot.docs[0];
-        setSubscription({
-          plan: subDoc.data().plan,
-          status: subDoc.data().status,
-        });
+        const role = userDoc.data()?.role;
+        setUserRole(role);
 
-        if (!userDoc.data()?.onboardingCompleted) {
-          router.push("/onboarding");
+        if (role === "admin") {
+          router.push("/admin");
+          return;
+        } else if (role === "superadmin") {
+          router.push("/superadmin");
           return;
         }
-      }
 
-      setLoading(false);
+        if (role === "customer") {
+          const subQuery = query(
+            collection(db, "subscriptions"),
+            where("userId", "==", currentUser.uid),
+            where("status", "==", "active")
+          );
+          const subSnapshot = await getDocs(subQuery);
+
+          if (subSnapshot.empty) {
+            router.push("/pricing");
+            return;
+          }
+
+          const subDoc = subSnapshot.docs[0];
+          setSubscription({
+            plan: subDoc.data().plan,
+            status: subDoc.data().status,
+          });
+
+          if (!userDoc.data()?.onboardingCompleted) {
+            router.push("/onboarding");
+            return;
+          }
+        }
+
+        setLoading(false);
+      } catch (err: unknown) {
+        setError("Network error: Please check your internet connection and try again.");
+        console.error("Error fetching user data:", err);
+        setLoading(false);
+      }
     });
 
     return () => unsubscribe();
@@ -122,24 +128,31 @@ export default function Dashboard() {
     if (!user || loading) return;
 
     const q = query(collection(db, "projects"), where("userId", "==", user.uid));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const projectList = querySnapshot.docs.map((doc) => {
-        const data = doc.data();
-        const createdAt = data.createdAt instanceof Timestamp
-          ? data.createdAt.toDate()
-          : new Date(data.createdAt);
-        return {
-          id: doc.id,
-          userId: data.userId,
-          title: data.title,
-          description: data.description,
-          status: data.status,
-          createdAt,
-          satisfactionRating: data.satisfactionRating,
-        };
-      }) as Project[];
-      setProjects(projectList);
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const projectList = querySnapshot.docs.map((doc) => {
+          const data = doc.data();
+          const createdAt = data.createdAt instanceof Timestamp
+            ? data.createdAt.toDate()
+            : new Date(data.createdAt);
+          return {
+            id: doc.id,
+            userId: data.userId,
+            title: data.title,
+            description: data.description,
+            status: data.status,
+            createdAt,
+            satisfactionRating: data.satisfactionRating,
+          };
+        }) as Project[];
+        setProjects(projectList);
+      },
+      (err) => {
+        setError("Network error: Please check your internet connection and try again.");
+        console.error("Error fetching projects:", err);
+      }
+    );
 
     return () => unsubscribe();
   }, [user, loading, db]);
@@ -161,6 +174,7 @@ export default function Dashboard() {
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
     } catch (error) {
+      setError("Network error: Please check your internet connection and try again.");
       console.error("Error adding project:", error);
     }
   };
@@ -176,6 +190,7 @@ export default function Dashboard() {
       await deleteDoc(doc(db, "projects", deletingProject.id));
       setDeletingProject(null);
     } catch (error) {
+      setError("Network error: Please check your internet connection and try again.");
       console.error("Error deleting project:", error);
     }
   };
@@ -197,6 +212,7 @@ export default function Dashboard() {
       });
       setEditingProject(null);
     } catch (error) {
+      setError("Network error: Please check your internet connection and try again.");
       console.error("Error updating project:", error);
     }
   };
@@ -215,13 +231,27 @@ export default function Dashboard() {
         satisfactionRating: rating,
       });
     } catch (err: unknown) {
-      setRatingError("Failed to submit rating");
+      setRatingError("Network error: Please check your internet connection and try again.");
       console.error("Error submitting rating:", err);
     }
   };
 
   if (loading) {
     return <div className="text-center mt-20 text-xl">Loading...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="text-center mt-20 text-xl text-red-500">
+        {error}
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   return (
