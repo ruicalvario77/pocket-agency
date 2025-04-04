@@ -1,7 +1,6 @@
-// src/app/cart/CartForm.tsx
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db } from "@/app/firebase/firebaseConfig";
@@ -9,14 +8,11 @@ import { doc, setDoc } from "firebase/firestore";
 
 export default function CartForm() {
   const [user, loading] = useAuthState(auth);
-  const [paymentData, setPaymentData] = useState<[string, string][] | null>(null);
-  const [signature, setSignature] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const plan = searchParams.get("plan");
-  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -34,27 +30,6 @@ export default function CartForm() {
     setSubmitting(true);
 
     try {
-      const idToken = await user.getIdToken();
-
-      const response = await fetch("/api/payfast-subscribe", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ plan, email: user.email }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to initiate subscription");
-      }
-
-      const { paymentData, signature } = await response.json();
-      setPaymentData(paymentData);
-      setSignature(signature);
-
-      // Create a pending subscription in Firestore
       const subscriptionRef = doc(db, "subscriptions", user.uid);
       await setDoc(subscriptionRef, {
         userId: user.uid,
@@ -64,6 +39,8 @@ export default function CartForm() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
+
+      router.push(`/checkout?plan=${plan}`);
     } catch (err: unknown) {
       let errorMessage = "An unexpected error occurred";
       if (err instanceof Error) {
@@ -71,16 +48,9 @@ export default function CartForm() {
       }
       setError(errorMessage);
       console.error("Checkout error:", err);
-    } finally {
       setSubmitting(false);
     }
   };
-
-  useEffect(() => {
-    if (paymentData && signature && formRef.current) {
-      formRef.current.submit();
-    }
-  }, [paymentData, signature]);
 
   if (loading) return <div className="text-center text-gray-500 mt-10">Loading...</div>;
   if (!user || !plan) return null;
@@ -125,20 +95,6 @@ export default function CartForm() {
           </button>
         </div>
       </section>
-
-      {paymentData && signature && (
-        <form
-          ref={formRef}
-          action="https://sandbox.payfast.co.za/eng/process"
-          method="POST"
-          className="hidden"
-        >
-          {paymentData.map(([key, value], index) => (
-            <input key={`${key}-${index}`} type="hidden" name={key} value={value} />
-          ))}
-          <input type="hidden" name="signature" value={signature} />
-        </form>
-      )}
     </div>
   );
 }

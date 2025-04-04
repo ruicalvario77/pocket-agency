@@ -1,10 +1,9 @@
-// src/app/auth/signup/SignupForm.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { createUserWithEmailAndPassword, sendEmailVerification, signOut } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { auth, db } from "@/app/firebase/firebaseConfig";
 import { doc, setDoc } from "firebase/firestore";
 
@@ -35,43 +34,24 @@ export default function SignupForm() {
     setSubmitting(true);
 
     try {
-      console.log("Starting signup process...");
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      console.log("User created:", user.uid, "Authenticated:", !!auth.currentUser);
 
-      // Send email verification
       await sendEmailVerification(user);
-      console.log("Verification email sent to:", email);
 
-      // Create user document
       const userDocRef = doc(db, "users", user.uid);
-      try {
-        await setDoc(userDocRef, {
-          email,
-          fullName,
-          role: "customer",
-          plan,
-          onboardingCompleted: false,
-          emailVerified: false, // Managed by Firebase Auth, but kept for reference
-          createdAt: new Date().toISOString(),
-        });
-        console.log("User document created successfully for UID:", user.uid);
-      } catch (docError) {
-        console.error("Failed to create user document:", docError);
-        if (docError instanceof Error) {
-          throw new Error("Failed to create user profile: " + docError.message);
-        } else {
-          throw new Error("Failed to create user profile: Unknown error");
-        }
-      }
-
-      // Sign out after signup
-      await signOut(auth);
-      console.log("User signed out successfully");
+      await setDoc(userDocRef, {
+        email,
+        fullName,
+        role: "customer",
+        plan,
+        onboardingCompleted: false,
+        emailVerified: false,
+        createdAt: new Date().toISOString(),
+      });
 
       setHasSignedUp(true);
-      router.push("/verify-email-prompt");
+      router.push(`/auth/customer-details?plan=${plan}`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
       setError(errorMessage);

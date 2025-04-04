@@ -1,18 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { signInWithEmailAndPassword, AuthError, sendEmailVerification } from "firebase/auth";
+import { signInWithEmailAndPassword, AuthError } from "firebase/auth";
 import { auth, db } from "@/app/firebase/firebaseConfig";
 import { useRouter } from "next/navigation";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [resendLoading, setResendLoading] = useState(false);
-  const [resendMessage, setResendMessage] = useState("");
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -23,14 +21,6 @@ export default function Login() {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
-      // Check Firebase Authentication's emailVerified status
-      if (!user.emailVerified) {
-        setError("Please verify your email before logging in.");
-        await auth.signOut();
-        setLoading(false);
-        return;
-      }
 
       const userDocRef = doc(db, "users", user.uid);
       const userDoc = await getDoc(userDocRef);
@@ -44,13 +34,6 @@ export default function Login() {
       const userData = userDoc.data();
       const role = userData.role;
       const onboardingCompleted = userData.onboardingCompleted;
-      const firestoreEmailVerified = userData.emailVerified;
-
-      // If Firebase Auth says verified but Firestore says not, update Firestore
-      if (user.emailVerified && !firestoreEmailVerified) {
-        await updateDoc(userDocRef, { emailVerified: true });
-        console.log("Updated Firestore: emailVerified set to true");
-      }
 
       if (role === "superadmin") {
         router.push("/superadmin");
@@ -84,54 +67,11 @@ export default function Login() {
     }
   };
 
-  const handleResendVerification = async () => {
-    if (resendLoading) return;
-    setResendMessage("");
-    setResendLoading(true);
-
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      if (user.emailVerified) {
-        setResendMessage("Email is already verified.");
-        await auth.signOut();
-        setResendLoading(false);
-        return;
-      }
-
-      await sendEmailVerification(user);
-      setResendMessage("Verification email resent successfully! Please check your inbox.");
-      await auth.signOut();
-    } catch (err) {
-      const authError = err as AuthError;
-      if (authError.code === "auth/network-request-failed") {
-        setError("Network error: Please check your internet connection and try again.");
-      } else {
-        switch (authError.code) {
-          case "auth/wrong-password":
-            setError("Incorrect password.");
-            break;
-          case "auth/user-not-found":
-            setError("No account found with this email.");
-            break;
-          case "auth/invalid-email":
-            setError("Invalid email format.");
-            break;
-          default:
-            setError("Failed to resend verification email. Please try again.");
-        }
-      }
-    }
-    setResendLoading(false);
-  };
-
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
         <h1 className="text-3xl font-bold text-center mb-6">Login</h1>
         {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-        {resendMessage && <p className="text-green-500 text-center mb-4">{resendMessage}</p>}
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <input
             type="email"
@@ -140,7 +80,7 @@ export default function Login() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            disabled={loading || resendLoading}
+            disabled={loading}
           />
           <input
             type="password"
@@ -149,25 +89,16 @@ export default function Login() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            disabled={loading || resendLoading}
+            disabled={loading}
           />
           <button
             type="submit"
             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition"
-            disabled={loading || resendLoading}
+            disabled={loading}
           >
             {loading ? "Logging in..." : "Login"}
           </button>
         </form>
-        {error === "Please verify your email before logging in." && (
-          <button
-            onClick={handleResendVerification}
-            className="mt-4 w-full px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition"
-            disabled={resendLoading || loading}
-          >
-            {resendLoading ? "Resending..." : "Resend Verification Email"}
-          </button>
-        )}
       </div>
     </div>
   );
