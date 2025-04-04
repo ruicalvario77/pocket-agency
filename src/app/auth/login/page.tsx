@@ -1,11 +1,10 @@
-// src/app/auth/login/page.tsx
 "use client";
 
 import { useState } from "react";
-import { signInWithEmailAndPassword, AuthError } from "firebase/auth";
+import { signInWithEmailAndPassword, AuthError, sendEmailVerification } from "firebase/auth";
 import { auth, db } from "@/app/firebase/firebaseConfig";
 import { useRouter } from "next/navigation";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -25,6 +24,14 @@ export default function Login() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
+      // Check Firebase Authentication's emailVerified status
+      if (!user.emailVerified) {
+        setError("Please verify your email before logging in.");
+        await auth.signOut();
+        setLoading(false);
+        return;
+      }
+
       const userDocRef = doc(db, "users", user.uid);
       const userDoc = await getDoc(userDocRef);
       if (!userDoc.exists()) {
@@ -34,15 +41,15 @@ export default function Login() {
         return;
       }
 
-      const role = userDoc.data()?.role;
-      const onboardingCompleted = userDoc.data()?.onboardingCompleted;
-      const emailVerified = userDoc.data()?.emailVerified;
+      const userData = userDoc.data();
+      const role = userData.role;
+      const onboardingCompleted = userData.onboardingCompleted;
+      const firestoreEmailVerified = userData.emailVerified;
 
-      if (role !== "superadmin" && !emailVerified) {
-        setError("Please verify your email before logging in.");
-        await auth.signOut();
-        setLoading(false);
-        return;
+      // If Firebase Auth says verified but Firestore says not, update Firestore
+      if (user.emailVerified && !firestoreEmailVerified) {
+        await updateDoc(userDocRef, { emailVerified: true });
+        console.log("Updated Firestore: emailVerified set to true");
       }
 
       if (role === "superadmin") {
@@ -78,7 +85,7 @@ export default function Login() {
   };
 
   const handleResendVerification = async () => {
-    if (resendLoading) return; // Prevent multiple clicks
+    if (resendLoading) return;
     setResendMessage("");
     setResendLoading(true);
 
@@ -86,37 +93,14 @@ export default function Login() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      const userDocRef = doc(db, "users", user.uid);
-      const userDoc = await getDoc(userDocRef);
-      if (!userDoc.exists()) {
-        setError("User data not found.");
+      if (user.emailVerified) {
+        setResendMessage("Email is already verified.");
         await auth.signOut();
         setResendLoading(false);
         return;
       }
 
-      const role = userDoc.data()?.role;
-      const emailVerified = userDoc.data()?.emailVerified;
-
-      if (role === "superadmin" || emailVerified) {
-        setResendMessage("Email is already verified or verification is not required.");
-        await auth.signOut();
-        setResendLoading(false);
-        return;
-      }
-
-      console.log("Sending resend verification email to:", email, "for user:", user.uid);
-      const emailResponse = await fetch("/api/send-verification-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, userId: user.uid }),
-      });
-
-      if (!emailResponse.ok) {
-        const errorData = await emailResponse.json();
-        throw new Error(errorData.error || "Failed to resend verification email");
-      }
-
+      await sendEmailVerification(user);
       setResendMessage("Verification email resent successfully! Please check your inbox.");
       await auth.signOut();
     } catch (err) {
@@ -138,8 +122,8 @@ export default function Login() {
             setError("Failed to resend verification email. Please try again.");
         }
       }
-      setResendLoading(false);
     }
+    setResendLoading(false);
   };
 
   return (
