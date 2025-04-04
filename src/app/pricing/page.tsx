@@ -1,5 +1,6 @@
 // src/app/pricing/page.tsx
 "use client";
+
 import { useState, useRef, useEffect } from "react";
 import { auth, db } from "@/app/firebase/firebaseConfig";
 import { onAuthStateChanged, createUserWithEmailAndPassword } from "firebase/auth";
@@ -15,13 +16,13 @@ const PricingPage = () => {
   const [password, setPassword] = useState("");
   const [userRole, setUserRole] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [error, setError] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // User is logged in, fetch their role
         const userDocRef = doc(db, "users", user.uid);
         const userDoc = await getDoc(userDocRef);
         if (!userDoc.exists()) {
@@ -33,7 +34,6 @@ const PricingPage = () => {
         const role = userDoc.data()?.role;
         setUserRole(role);
 
-        // Redirect non-customers to their appropriate dashboards
         if (role !== "customer") {
           if (role === "superadmin") {
             router.push("/superadmin");
@@ -45,7 +45,6 @@ const PricingPage = () => {
           return;
         }
 
-        // Pre-fill email for logged-in users
         setEmail(user.email || "");
       }
       setAuthLoading(false);
@@ -54,18 +53,19 @@ const PricingPage = () => {
     return () => unsubscribe();
   }, [router]);
 
-  const handleSubscribe = async (plan: "basic" | "pro") => {
+  const handleSubscribe = async (plan: "basic" | "pro", retryCount = 0) => {
     if (!email) {
-      alert("Please enter an email address to subscribe.");
+      setError("Please enter an email address to subscribe.");
       return;
     }
 
     if (!auth.currentUser && (!fullName || !password)) {
-      alert("Please enter your full name and password to subscribe.");
+      setError("Please enter your full name and password to subscribe.");
       return;
     }
 
     setLoading(true);
+    setError("");
     let user = auth.currentUser;
     let idToken: string | null = null;
 
@@ -76,29 +76,49 @@ const PricingPage = () => {
         user = userCredential.user;
 
         // Create user document in Firestore
-        await setDoc(doc(db, "users", user.uid), {
+        const userDocRef = doc(db, "users", user.uid);
+        await setDoc(userDocRef, {
           email,
           fullName,
           role: "customer",
           onboardingCompleted: false,
+          emailVerified: false,
         });
 
+        // Create a pending subscription with retry logic
+        const subscriptionRef = doc(db, "subscriptions", user.uid);
+        try {
+          await setDoc(subscriptionRef, {
+            userId: user.uid,
+            email_address: email,
+            plan,
+            status: "pending",
+            createdAt: new Date().toISOString(),
+          });
+        } catch (subError) {
+          if (retryCount < 2) {
+            console.log(`Retrying subscription creation (attempt ${retryCount + 2}/3)...`);
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+            return handleSubscribe(plan, retryCount + 1);
+          }
+          throw new Error(`Failed to create subscription after retries: ${subError instanceof Error ? subError.message : "Unknown error"}`);
+        }
+
         // Send verification email
-        await fetch("/api/send-verification-email", {
+        const emailResponse = await fetch("/api/send-verification-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, userId: user.uid }),
         });
 
-        // Create a pending subscription
-        const subscriptionRef = doc(db, "subscriptions", user.uid);
-        await setDoc(subscriptionRef, {
-          userId: user.uid,
-          email_address: email,
-          plan,
-          status: "pending",
-          createdAt: new Date().toISOString(),
-        });
+        if (!emailResponse.ok) {
+          const errorData = await emailResponse.json();
+          throw new Error(errorData.error || "Failed to send verification email");
+        }
+
+        // Redirect to verify-email-prompt
+        router.push("/verify-email-prompt");
+        return; // Exit early since we don't need to proceed to payment yet
       }
 
       idToken = await user!.getIdToken();
@@ -111,7 +131,6 @@ const PricingPage = () => {
         },
         body: JSON.stringify({ plan, email: email || user?.email }),
       });
-      console.log("Fetch response status:", response.status);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -119,7 +138,6 @@ const PricingPage = () => {
       }
 
       const { paymentData, signature } = await response.json();
-      console.log("Payment data received:", paymentData, "Signature:", signature);
       setPaymentData(paymentData);
       setSignature(signature);
     } catch (error: unknown) {
@@ -127,8 +145,8 @@ const PricingPage = () => {
       if (error instanceof Error) {
         errorMessage = error.message;
       }
+      setError(errorMessage);
       console.error("Subscription error:", error);
-      alert(errorMessage || "An error occurred while initiating your subscription.");
     } finally {
       setLoading(false);
     }
@@ -136,13 +154,12 @@ const PricingPage = () => {
 
   useEffect(() => {
     if (paymentData && signature && formRef.current) {
-      console.log("Submitting PayFast form with data:", paymentData, "Signature:", signature);
       formRef.current.submit();
     }
   }, [paymentData, signature]);
 
   if (authLoading) return <div className="text-center text-gray-500 mt-10">Loading...</div>;
-  if (userRole && userRole !== "customer") return null; // Prevent rendering until redirect occurs
+  if (userRole && userRole !== "customer") return null;
 
   return (
     <div className="min-h-screen bg-gray-100 pt-20">
@@ -153,6 +170,7 @@ const PricingPage = () => {
         </p>
 
         <div className="text-center mb-8">
+          {error && <p className="text-red-500 mb-4">{error}</p>}
           {!auth.currentUser && (
             <>
               <input

@@ -28,11 +28,16 @@ export async function POST(req: NextRequest) {
     }/verify-email?token=${token}&userId=${userId}`;
 
     // Send the verification email
-    await sendEmail(
-      email,
-      "Verify Your Email - Pocket Agency",
-      `Please verify your email by clicking this link: ${verificationLink}`
-    );
+    try {
+      await sendEmail(
+        email,
+        "Verify Your Email - Pocket Agency",
+        `Please verify your email by clicking this link: ${verificationLink}`
+      );
+    } catch (emailError: unknown) {
+      console.error("Detailed email sending error:", emailError);
+      throw new Error(`Failed to send email: ${emailError instanceof Error ? emailError.message : "Unknown error"}`);
+    }
 
     return NextResponse.json({ message: "Verification email sent" }, { status: 200 });
   } catch (error: unknown) {
