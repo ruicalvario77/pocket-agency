@@ -78,6 +78,7 @@ export default function Login() {
   };
 
   const handleResendVerification = async () => {
+    if (resendLoading) return; // Prevent multiple clicks
     setResendMessage("");
     setResendLoading(true);
 
@@ -104,6 +105,7 @@ export default function Login() {
         return;
       }
 
+      console.log("Sending resend verification email to:", email, "for user:", user.uid);
       const emailResponse = await fetch("/api/send-verification-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
