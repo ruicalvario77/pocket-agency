@@ -33,16 +33,27 @@ export default function VerifyEmailContent() {
         const userData = userDoc.data();
         const storedToken = userData.verificationToken;
 
+        console.log("Verification attempt:", {
+          userId,
+          tokenFromUrl: token,
+          storedToken,
+          emailVerified: userData.emailVerified,
+          fullDocument: userData,
+        });
+
         if (!storedToken || token !== storedToken) {
           setError("Invalid or expired verification token. Please request a new verification email.");
           return;
         }
 
         // Mark the email as verified and clear the verification token
+        console.log("Updating document with:", {
+          emailVerified: true,
+          verificationToken: null,
+        });
         await updateDoc(userDocRef, {
           emailVerified: true,
           verificationToken: null,
-          token: token, // Include the token in the update for verification in the security rule
         });
 
         setMessage("Email verified successfully! Redirecting to login...");
