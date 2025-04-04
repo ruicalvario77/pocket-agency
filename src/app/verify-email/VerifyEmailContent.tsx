@@ -54,7 +54,7 @@ export default function VerifyEmailContent() {
         }
 
         // Mark the email as verified and clear the verification token
-        console.log("Updating document with:", {
+        console.log("Attempting to update document with:", {
           emailVerified: true,
           verificationToken: null,
         });
@@ -62,6 +62,7 @@ export default function VerifyEmailContent() {
           emailVerified: true,
           verificationToken: null,
         });
+        console.log("Update successful");
 
         setMessage("Email verified successfully! Redirecting to login...");
         setTimeout(() => {
