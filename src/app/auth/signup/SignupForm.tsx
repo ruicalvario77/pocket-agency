@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification, signOut } from "firebase/auth";
 import { auth, db } from "@/app/firebase/firebaseConfig";
 import { doc, setDoc } from "firebase/firestore";
 
@@ -35,46 +35,48 @@ export default function SignupForm() {
     setSubmitting(true);
 
     try {
+      console.log("Starting signup process...");
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+      console.log("User created:", user.uid, "Authenticated:", !!auth.currentUser);
 
-      await setDoc(doc(db, "users", user.uid), {
-        email,
-        fullName,
-        role: "customer",
-        plan,
-        onboardingCompleted: false,
-        emailVerified: false,
-        createdAt: new Date().toISOString(),
-      });
+      // Send email verification
+      await sendEmailVerification(user);
+      console.log("Verification email sent to:", email);
 
-      console.log("Sending verification email to:", email, "for user:", user.uid);
-      const emailResponse = await fetch("/api/send-verification-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, userId: user.uid }),
-      });
-
-      if (!emailResponse.ok) {
-        const errorData = await emailResponse.json();
-        throw new Error(errorData.error || "Failed to send verification email");
+      // Create user document
+      const userDocRef = doc(db, "users", user.uid);
+      try {
+        await setDoc(userDocRef, {
+          email,
+          fullName,
+          role: "customer",
+          plan,
+          onboardingCompleted: false,
+          emailVerified: false, // Managed by Firebase Auth, but kept for reference
+          createdAt: new Date().toISOString(),
+        });
+        console.log("User document created successfully for UID:", user.uid);
+      } catch (docError) {
+        console.error("Failed to create user document:", docError);
+        if (docError instanceof Error) {
+          throw new Error("Failed to create user profile: " + docError.message);
+        } else {
+          throw new Error("Failed to create user profile: Unknown error");
+        }
       }
 
-      console.log("Verification email sent successfully during signup");
-
-      // Log the user out after signup to prevent redirect loop
+      // Sign out after signup
       await signOut(auth);
+      console.log("User signed out successfully");
 
       setHasSignedUp(true);
       router.push("/verify-email-prompt");
-    } catch (err: unknown) {
-      let errorMessage = "An unexpected error occurred";
-      if (err instanceof Error) {
-        errorMessage = err.message;
-      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
       setError(errorMessage);
       console.error("Signup error:", err);
-      setSubmitting(false); // Ensure submitting is reset on error
+      setSubmitting(false);
     }
   };
 
@@ -85,7 +87,9 @@ export default function SignupForm() {
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
         <h1 className="text-3xl font-bold text-center mb-6">Sign Up</h1>
-        <p className="text-gray-600 text-center mb-4">Selected Plan: {plan === "basic" ? "Basic (R3000/month)" : "Pro (R8000/month)"}</p>
+        <p className="text-gray-600 text-center mb-4">
+          Selected Plan: {plan === "basic" ? "Basic (R3000/month)" : "Pro (R8000/month)"}
+        </p>
         {error && <p className="text-red-500 text-center mb-4">{error}</p>}
         <form onSubmit={handleSignup} className="flex flex-col gap-4">
           <input
