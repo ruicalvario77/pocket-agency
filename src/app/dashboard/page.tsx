@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { auth, db } from "@/app/firebase/firebaseConfig";
+import { auth } from "@/app/firebase/firebaseConfig";
 import {
   getFirestore,
   collection,
@@ -30,14 +30,8 @@ interface Project {
   satisfactionRating?: number;
 }
 
-interface Subscription {
-  plan: string;
-  status: string;
-}
-
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
   const [projectTitle, setProjectTitle] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
@@ -45,7 +39,6 @@ export default function Dashboard() {
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showToast, setShowToast] = useState(false);
@@ -81,7 +74,6 @@ export default function Dashboard() {
         }
 
         const role = userDoc.data()?.role;
-        setUserRole(role);
         setEmailVerified(userDoc.data()?.emailVerified || false);
 
         if (role === "admin") {
@@ -102,12 +94,6 @@ export default function Dashboard() {
             return;
           }
 
-          const subDoc = subSnapshot.docs[0];
-          setSubscription({
-            plan: subDoc.data().plan,
-            status: subDoc.data().status,
-          });
-
           if (!userDoc.data()?.onboardingCompleted) {
             router.push("/onboarding");
             return;
@@ -123,7 +109,7 @@ export default function Dashboard() {
     });
 
     return () => unsubscribe();
-  }, [router, db]);
+  }, [router]);
 
   useEffect(() => {
     if (!user || loading) return;
@@ -156,7 +142,7 @@ export default function Dashboard() {
     );
 
     return () => unsubscribe();
-  }, [user, loading, db]);
+  }, [user, loading]);
 
   const handleSubmitProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -474,7 +460,7 @@ export default function Dashboard() {
           <div className="bg-white rounded-lg p-6 shadow-lg w-full max-w-md">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Confirm Deletion</h2>
             <p className="text-gray-600 mb-4">
-              Are you sure you want to delete <strong>"{deletingProject.title}"</strong>? This action cannot be undone.
+              Are you sure you want to delete <strong>&quot;{deletingProject.title}&quot;</strong>? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
               <button
