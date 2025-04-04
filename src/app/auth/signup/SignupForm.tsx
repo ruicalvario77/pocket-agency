@@ -15,18 +15,19 @@ export default function SignupForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [hasSignedUp, setHasSignedUp] = useState(false); // New flag to prevent redirect
   const router = useRouter();
   const searchParams = useSearchParams();
   const plan = searchParams.get("plan");
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user && !hasSignedUp) {
       router.push("/dashboard");
     }
     if (!plan) {
       router.push("/pricing");
     }
-  }, [user, loading, router, plan]);
+  }, [user, loading, router, plan, hasSignedUp]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +59,7 @@ export default function SignupForm() {
         throw new Error(errorData.error || "Failed to send verification email");
       }
 
+      setHasSignedUp(true); // Set flag to prevent useEffect redirect
       router.push("/verify-email-prompt");
     } catch (err: unknown) {
       let errorMessage = "An unexpected error occurred";
