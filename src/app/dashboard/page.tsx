@@ -1,9 +1,9 @@
 // src/app/dashboard/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { auth } from "@/app/firebase/firebaseConfig";
+import { auth, db } from "@/app/firebase/firebaseConfig";
 import {
   getFirestore,
   collection,
@@ -50,6 +50,9 @@ export default function Dashboard() {
   const [error, setError] = useState("");
   const [showToast, setShowToast] = useState(false);
   const [ratingError, setRatingError] = useState("");
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
   const router = useRouter();
   const db = getFirestore();
 
@@ -79,16 +82,14 @@ export default function Dashboard() {
 
         const role = userDoc.data()?.role;
         setUserRole(role);
+        setEmailVerified(userDoc.data()?.emailVerified || false);
 
         if (role === "admin") {
           router.push("/admin");
           return;
         } else if (role === "superadmin") {
           router.push("/superadmin");
-          return;
-        }
-
-        if (role === "customer") {
+        } else if (role === "customer") {
           const subQuery = query(
             collection(db, "subscriptions"),
             where("userId", "==", currentUser.uid),
@@ -160,6 +161,11 @@ export default function Dashboard() {
   const handleSubmitProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectTitle || !projectDescription || !user) return;
+
+    if (!emailVerified) {
+      setError("Please verify your email before submitting a project.");
+      return;
+    }
 
     try {
       await addDoc(collection(db, "projects"), {
@@ -236,6 +242,37 @@ export default function Dashboard() {
     }
   };
 
+  const handleResendVerification = async () => {
+    setResendMessage("");
+    setResendLoading(true);
+
+    try {
+      if (!user) throw new Error("User not authenticated");
+
+      const emailResponse = await fetch("/api/send-verification-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user.email, userId: user.uid }),
+      });
+
+      if (!emailResponse.ok) {
+        const errorData = await emailResponse.json();
+        throw new Error(errorData.error || "Failed to resend verification email");
+      }
+
+      setResendMessage("Verification email resent successfully! Please check your inbox.");
+    } catch (err: unknown) {
+      let errorMessage = "An unexpected error occurred";
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
+      console.error("Error resending verification email:", err);
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   if (loading) {
     return <div className="text-center mt-20 text-xl">Loading...</div>;
   }
@@ -255,144 +292,146 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 pt-16">
+    <div className="min-h-screen bg-gray-50 pt-16">
+      {!emailVerified && (
+        <div className="bg-yellow-100 p-4 text-center text-yellow-800">
+          <p className="inline-block">
+            You have not verified your account yet. Please check your email to verify your account.
+          </p>
+          <button
+            onClick={handleResendVerification}
+            className="ml-2 px-4 py-1 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:bg-gray-400 transition"
+            disabled={resendLoading}
+          >
+            {resendLoading ? "Resending..." : "Resend Verification Email"}
+          </button>
+          {resendMessage && <p className="mt-2 text-green-600">{resendMessage}</p>}
+        </div>
+      )}
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800">
-            Welcome, {user?.email ?? "User"}!
-          </h2>
-          {userRole === "customer" && subscription && (
-            <p className="mt-2 text-gray-600">
-              Subscription: <span className="font-medium capitalize">{subscription.plan}</span> (
-              <span className="text-green-600">{subscription.status}</span>)
-            </p>
-          )}
-          {userRole === "contractor" && (
-            <p className="mt-2 text-gray-600">
-              This is your contractor dashboard. Task management will be available soon.
-            </p>
-          )}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">Customer Dashboard</h1>
+            <p className="mt-2 text-gray-600">Manage your projects ({projects.length} total)</p>
+          </div>
+          <button
+            onClick={() => auth.signOut().then(() => router.push("/auth/login"))}
+            className="px-6 py-2 bg-red-600 text-white rounded-lg shadow-md hover:bg-red-700 transition duration-200"
+          >
+            Logout
+          </button>
         </div>
 
-        {userRole === "customer" && (
-          <>
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Submit a New Project</h3>
-              <form onSubmit={handleSubmitProject} className="flex flex-col gap-4">
-                <input
-                  type="text"
-                  placeholder="Project Title"
-                  className="border rounded-lg p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={projectTitle}
-                  onChange={(e) => setProjectTitle(e.target.value)}
-                  required
-                />
-                <textarea
-                  placeholder="Project Description"
-                  className="border rounded-lg p-2 w-full h-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={projectDescription}
-                  onChange={(e) => setProjectDescription(e.target.value)}
-                  required
-                />
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition self-start"
-                >
-                  Submit Project
-                </button>
-              </form>
-            </div>
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Submit a New Project</h2>
+          {error && <p className="text-red-500 mb-4">{error}</p>}
+          <form onSubmit={handleSubmitProject} className="flex flex-col gap-3">
+            <input
+              type="text"
+              placeholder="Project Title"
+              value={projectTitle}
+              onChange={(e) => setProjectTitle(e.target.value)}
+              className="border p-2 rounded w-full"
+              required
+              disabled={!emailVerified}
+            />
+            <textarea
+              placeholder="Project Description"
+              value={projectDescription}
+              onChange={(e) => setProjectDescription(e.target.value)}
+              className="border p-2 rounded w-full h-24"
+              required
+              disabled={!emailVerified}
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
+              disabled={!emailVerified}
+            >
+              Submit Project
+            </button>
+          </form>
+        </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Your Projects</h3>
-              {ratingError && <p className="text-red-500 mb-4">{ratingError}</p>}
-              {projects.length === 0 ? (
-                <p className="text-gray-600">No projects submitted yet.</p>
-              ) : (
-                <div className="flex space-x-4 overflow-x-auto pb-4">
-                  {Object.entries(columns).map(([status, column]) => (
-                    <div key={status} className="flex-1 min-w-[300px]">
-                      <h4
-                        className={`text-lg font-semibold mb-4 ${
-                          status === "pending"
-                            ? "text-yellow-600"
-                            : status === "in_progress"
-                            ? "text-blue-600"
-                            : "text-green-600"
-                        }`}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Your Projects</h2>
+          {ratingError && <p className="text-red-500 mb-4">{ratingError}</p>}
+          {projects.length === 0 ? (
+            <p className="text-gray-500">No projects found.</p>
+          ) : (
+            <div className="flex space-x-4 overflow-x-auto pb-4">
+              {Object.entries(columns).map(([status, column]) => (
+                <div key={status} className="flex-1 min-w-[300px]">
+                  <h4
+                    className={`text-lg font-semibold mb-4 ${
+                      status === "pending"
+                        ? "text-yellow-600"
+                        : status === "in_progress"
+                        ? "text-blue-600"
+                        : "text-green-600"
+                    }`}
+                  >
+                    {column.title} ({column.items.length})
+                  </h4>
+                  <div className="bg-gray-100 rounded-lg p-4 min-h-[200px]">
+                    {column.items.map((project) => (
+                      <div
+                        key={project.id}
+                        className="bg-white rounded-lg p-4 mb-4 shadow-sm hover:shadow-md transition-shadow duration-200"
                       >
-                        {column.title} ({column.items.length})
-                      </h4>
-                      <div className="bg-gray-100 rounded-lg p-4 min-h-[200px]">
-                        {column.items.map((project) => (
-                          <div
-                            key={project.id}
-                            className="bg-white rounded-lg p-4 mb-4 shadow-sm hover:shadow-md transition-shadow duration-200"
-                          >
-                            <h4 className="text-md font-semibold text-gray-800">{project.title}</h4>
-                            <p className="text-gray-600 mt-1 line-clamp-2">{project.description}</p>
-                            <p className="text-sm text-gray-500 mt-2">
-                              Created: {project.createdAt.toLocaleDateString()}
-                            </p>
-                            {project.status === "completed" && (
-                              <div className="mt-2">
-                                <p className="text-sm text-gray-500">Satisfaction Rating:</p>
-                                {project.satisfactionRating ? (
-                                  <span className="text-yellow-500">
-                                    {project.satisfactionRating} / 5
-                                  </span>
-                                ) : (
-                                  <div className="flex gap-1">
-                                    {[1, 2, 3, 4, 5].map(rating => (
-                                      <button
-                                        key={rating}
-                                        onClick={() => handleRateProject(project.id, rating)}
-                                        className={`text-2xl ${
-                                          rating <= (project.satisfactionRating || 0)
-                                            ? "text-yellow-500"
-                                            : "text-gray-300"
-                                        } hover:text-yellow-400 transition`}
-                                      >
-                                        ★
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
+                        <h4 className="text-md font-semibold text-gray-800">{project.title}</h4>
+                        <p className="text-gray-600 mt-1 line-clamp-2">{project.description}</p>
+                        <p className="text-sm text-gray-500 mt-2">
+                          Created: {project.createdAt.toLocaleDateString()}
+                        </p>
+                        {project.status === "completed" && (
+                          <div className="mt-2">
+                            <p className="text-sm text-gray-500">Satisfaction Rating:</p>
+                            {project.satisfactionRating ? (
+                              <span className="text-yellow-500">
+                                {project.satisfactionRating} / 5
+                              </span>
+                            ) : (
+                              <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map(rating => (
+                                  <button
+                                    key={rating}
+                                    onClick={() => handleRateProject(project.id, rating)}
+                                    className={`text-2xl ${
+                                      rating <= (project.satisfactionRating || 0)
+                                        ? "text-yellow-500"
+                                        : "text-gray-300"
+                                    } hover:text-yellow-400 transition`}
+                                  >
+                                    ★
+                                  </button>
+                                ))}
                               </div>
                             )}
-                            <div className="mt-3 flex gap-2">
-                              <button
-                                onClick={() => handleEditProject(project)}
-                                className="px-3 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteProject(project)}
-                                className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                              >
-                                Delete
-                              </button>
-                            </div>
                           </div>
-                        ))}
+                        )}
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            onClick={() => handleEditProject(project)}
+                            className="px-3 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProject(project)}
+                            className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
-          </>
-        )}
-
-        {userRole === "contractor" && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Your Tasks</h3>
-            <p className="text-gray-600">
-              Task management for contractors will be implemented in a future phase.
-            </p>
-          </div>
-        )}
+          )}
+        </div>
       </main>
 
       {/* Edit Modal */}
@@ -435,7 +474,7 @@ export default function Dashboard() {
           <div className="bg-white rounded-lg p-6 shadow-lg w-full max-w-md">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Confirm Deletion</h2>
             <p className="text-gray-600 mb-4">
-              Are you sure you want to delete <strong>&quot;{deletingProject.title}&quot;</strong>? This action cannot be undone.
+              Are you sure you want to delete <strong>"{deletingProject.title}"</strong>? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
               <button
