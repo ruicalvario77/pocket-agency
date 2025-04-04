@@ -42,6 +42,7 @@ export default function VerifyEmailContent() {
         await updateDoc(userDocRef, {
           emailVerified: true,
           verificationToken: null,
+          token: token, // Include the token in the update for verification in the security rule
         });
 
         setMessage("Email verified successfully! Redirecting to login...");

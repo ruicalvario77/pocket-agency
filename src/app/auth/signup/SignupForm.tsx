@@ -48,6 +48,7 @@ export default function SignupForm() {
         createdAt: new Date().toISOString(),
       });
 
+      console.log("Sending verification email to:", email, "for user:", user.uid);
       const emailResponse = await fetch("/api/send-verification-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -58,6 +59,8 @@ export default function SignupForm() {
         const errorData = await emailResponse.json();
         throw new Error(errorData.error || "Failed to send verification email");
       }
+
+      console.log("Verification email sent successfully during signup");
 
       // Log the user out after signup to prevent redirect loop
       await signOut(auth);
@@ -71,8 +74,7 @@ export default function SignupForm() {
       }
       setError(errorMessage);
       console.error("Signup error:", err);
-    } finally {
-      setSubmitting(false);
+      setSubmitting(false); // Ensure submitting is reset on error
     }
   };
 
