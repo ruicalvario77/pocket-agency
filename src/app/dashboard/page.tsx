@@ -1,4 +1,3 @@
-// src/app/dashboard/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -18,7 +17,7 @@ import {
   getDoc,
   Timestamp,
 } from "firebase/firestore";
-import { User } from "firebase/auth";
+import { User, sendEmailVerification } from "firebase/auth";
 
 interface Project {
   id: string;
@@ -65,6 +64,7 @@ export default function Dashboard() {
       }
 
       setUser(currentUser);
+      setEmailVerified(currentUser.emailVerified);
 
       try {
         const userDocRef = doc(db, "users", currentUser.uid);
@@ -77,16 +77,6 @@ export default function Dashboard() {
         }
 
         const role = userDoc.data()?.role;
-        const isEmailVerified = userDoc.data()?.emailVerified || false;
-        setEmailVerified(isEmailVerified);
-
-        if (!isEmailVerified) {
-          setError("Please verify your email before accessing the dashboard.");
-          await auth.signOut();
-          setIsRedirecting(true);
-          router.push("/auth/login");
-          return;
-        }
 
         if (role === "admin") {
           setIsRedirecting(true);
@@ -189,7 +179,6 @@ export default function Dashboard() {
   };
 
   const handleDeleteProject = (project: Project) => {
-    console.log("Opening delete modal for project:", project);
     setDeletingProject(project);
   };
 
@@ -205,7 +194,6 @@ export default function Dashboard() {
   };
 
   const handleEditProject = (project: Project) => {
-    console.log("Opening edit modal for project:", project);
     setEditingProject(project);
     setEditedTitle(project.title);
     setEditedDescription(project.description);
@@ -251,21 +239,10 @@ export default function Dashboard() {
 
     try {
       if (!user) throw new Error("User not authenticated");
-
-      const emailResponse = await fetch("/api/send-verification-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: user.email, userId: user.uid }),
-      });
-
-      if (!emailResponse.ok) {
-        const errorData = await emailResponse.json();
-        throw new Error(errorData.error || "Failed to resend verification email");
-      }
-
+      await sendEmailVerification(user);
       setResendMessage("Verification email resent successfully! Please check your inbox.");
     } catch (err: unknown) {
-      let errorMessage = "An unexpected error occurred";
+      let errorMessage = "Failed to resend verification email.";
       if (err instanceof Error) {
         errorMessage = err.message;
       }
@@ -280,7 +257,7 @@ export default function Dashboard() {
     return <div className="text-center mt-20 text-xl">Loading...</div>;
   }
 
-  if (error) {
+  if (error && !emailVerified) {
     return (
       <div className="text-center mt-20 text-xl text-red-500">
         {error}
@@ -481,7 +458,7 @@ export default function Dashboard() {
           <div className="bg-white rounded-lg p-6 shadow-lg w-full max-w-md">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Confirm Deletion</h2>
             <p className="text-gray-600 mb-4">
-              Are you sure you want to delete <strong>&quot;{deletingProject.title}&quot;</strong>? This action cannot be undone.
+              Are you sure you want to delete <strong>"{deletingProject.title}"</strong>? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
               <button
