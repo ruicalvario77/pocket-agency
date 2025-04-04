@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { db } from "@/app/firebase/firebaseConfig";
+import { auth, db } from "@/app/firebase/firebaseConfig";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 export default function VerifyEmailContent() {
@@ -22,6 +22,13 @@ export default function VerifyEmailContent() {
       }
 
       try {
+        // Check authentication state
+        const currentUser = auth.currentUser;
+        console.log("Authentication state:", {
+          isAuthenticated: !!currentUser,
+          userId: currentUser?.uid,
+        });
+
         // Fetch the user document from Firestore
         const userDocRef = doc(db, "users", userId);
         const userDoc = await getDoc(userDocRef);
