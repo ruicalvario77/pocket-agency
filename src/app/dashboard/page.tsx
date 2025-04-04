@@ -458,7 +458,7 @@ export default function Dashboard() {
           <div className="bg-white rounded-lg p-6 shadow-lg w-full max-w-md">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Confirm Deletion</h2>
             <p className="text-gray-600 mb-4">
-              Are you sure you want to delete <strong>"{deletingProject.title}"</strong>? This action cannot be undone.
+              Are you sure you want to delete <strong>\"{deletingProject.title}\"</strong>? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
               <button
