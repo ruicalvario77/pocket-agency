@@ -45,9 +45,10 @@ export default function CheckoutPage() {
         throw new Error(errorData.error || "Payment initiation failed");
       }
 
-      const { paymentData, signature } = await response.json();
+      // Comment out unused variables for now; integrate Payfast later
+      // const { paymentData, signature } = await response.json();
 
-      // Simulate payment success (replace with actual Payfast redirect and callback handling)
+      // Simulate payment success (replace with Payfast redirect later)
       const subscriptionRef = doc(db, "subscriptions", user.uid);
       await updateDoc(subscriptionRef, {
         status: "active",
@@ -60,7 +61,7 @@ export default function CheckoutPage() {
       });
 
       router.push("/dashboard");
-    } catch (err: unknown) {
+    } catch (err) {
       let errorMessage = "Payment failed. Please try again.";
       if (err instanceof Error) {
         errorMessage = err.message;
