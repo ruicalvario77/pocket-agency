@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth, db } from "@/app/firebase/firebaseConfig";
 import { doc, setDoc } from "firebase/firestore";
 
@@ -15,7 +15,7 @@ export default function SignupForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [hasSignedUp, setHasSignedUp] = useState(false); // New flag to prevent redirect
+  const [hasSignedUp, setHasSignedUp] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const plan = searchParams.get("plan");
@@ -59,7 +59,10 @@ export default function SignupForm() {
         throw new Error(errorData.error || "Failed to send verification email");
       }
 
-      setHasSignedUp(true); // Set flag to prevent useEffect redirect
+      // Log the user out after signup to prevent redirect loop
+      await signOut(auth);
+
+      setHasSignedUp(true);
       router.push("/verify-email-prompt");
     } catch (err: unknown) {
       let errorMessage = "An unexpected error occurred";
