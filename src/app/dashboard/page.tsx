@@ -46,6 +46,7 @@ export default function Dashboard() {
   const [emailVerified, setEmailVerified] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const router = useRouter();
   const db = getFirestore();
 
@@ -58,6 +59,7 @@ export default function Dashboard() {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
       if (!currentUser) {
+        setIsRedirecting(true);
         router.push("/auth/login");
         return;
       }
@@ -69,32 +71,47 @@ export default function Dashboard() {
         const userDoc = await getDoc(userDocRef);
         if (!userDoc.exists()) {
           setError("User data not found.");
+          setIsRedirecting(true);
           router.push("/auth/login");
           return;
         }
 
         const role = userDoc.data()?.role;
-        setEmailVerified(userDoc.data()?.emailVerified || false);
+        const isEmailVerified = userDoc.data()?.emailVerified || false;
+        setEmailVerified(isEmailVerified);
+
+        if (!isEmailVerified) {
+          setError("Please verify your email before accessing the dashboard.");
+          await auth.signOut();
+          setIsRedirecting(true);
+          router.push("/auth/login");
+          return;
+        }
 
         if (role === "admin") {
+          setIsRedirecting(true);
           router.push("/admin");
           return;
         } else if (role === "superadmin") {
+          setIsRedirecting(true);
           router.push("/superadmin");
+          return;
         } else if (role === "customer") {
           const subQuery = query(
             collection(db, "subscriptions"),
             where("userId", "==", currentUser.uid),
-            where("status", "in", ["active", "pending"]) // Allow both active and pending subscriptions
+            where("status", "in", ["active", "pending"])
           );
           const subSnapshot = await getDocs(subQuery);
 
           if (subSnapshot.empty) {
+            setIsRedirecting(true);
             router.push("/pricing");
             return;
           }
 
           if (!userDoc.data()?.onboardingCompleted) {
+            setIsRedirecting(true);
             router.push("/onboarding");
             return;
           }
@@ -275,6 +292,10 @@ export default function Dashboard() {
         </button>
       </div>
     );
+  }
+
+  if (isRedirecting) {
+    return <div className="text-center mt-20 text-xl">Redirecting...</div>;
   }
 
   return (

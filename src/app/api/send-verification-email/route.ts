@@ -11,10 +11,20 @@ export async function POST(req: NextRequest) {
   const { email, userId } = await req.json();
 
   if (!email || !userId) {
+    console.error("Missing email or userId:", { email, userId });
     return NextResponse.json({ error: "Missing email or userId" }, { status: 400 });
   }
 
   try {
+    // Log environment variables for debugging
+    console.log("Email configuration:", {
+      EMAIL_HOST: process.env.EMAIL_HOST,
+      EMAIL_PORT: process.env.EMAIL_PORT,
+      EMAIL_USER: process.env.EMAIL_USER,
+      EMAIL_PASS: process.env.EMAIL_PASS ? "[REDACTED]" : "undefined",
+      EMAIL_FROM: process.env.EMAIL_FROM,
+    });
+
     // Generate a random token
     const token = generateToken();
 
@@ -34,6 +44,7 @@ export async function POST(req: NextRequest) {
         "Verify Your Email - Pocket Agency",
         `Please verify your email by clicking this link: ${verificationLink}`
       );
+      console.log("Verification email sent successfully to:", email);
     } catch (emailError: unknown) {
       console.error("Detailed email sending error:", emailError);
       throw new Error(`Failed to send email: ${emailError instanceof Error ? emailError.message : "Unknown error"}`);

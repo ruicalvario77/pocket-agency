@@ -1,14 +1,18 @@
+// src/app/onboarding/page.tsx
 "use client";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/app/firebase/firebaseConfig";
 import { doc, setDoc, getDoc } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 
 export default function Onboarding() {
   const [step, setStep] = useState(1);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -19,7 +23,7 @@ export default function Onboarding() {
         return;
       }
 
-      // Fetch user role
+      // Fetch user role and email verification status
       const userDocRef = doc(db, "users", user.uid);
       const userDoc = await getDoc(userDocRef);
       if (!userDoc.exists()) {
@@ -29,7 +33,9 @@ export default function Onboarding() {
       }
 
       const role = userDoc.data()?.role;
+      const isEmailVerified = userDoc.data()?.emailVerified || false;
       setUserRole(role);
+      setEmailVerified(isEmailVerified);
 
       // Redirect non-customers to their appropriate dashboards
       if (role !== "customer") {
@@ -40,6 +46,14 @@ export default function Onboarding() {
         } else if (role === "contractor") {
           router.push("/dashboard");
         }
+        return;
+      }
+
+      // Check email verification
+      if (!isEmailVerified) {
+        setError("Please verify your email before completing onboarding.");
+        await signOut(auth);
+        router.push("/auth/login");
         return;
       }
 
@@ -65,11 +79,12 @@ export default function Onboarding() {
   };
 
   if (authLoading) return <div className="text-center text-gray-500 mt-10">Loading...</div>;
-  if (!userRole || userRole !== "customer") return null; // Prevent rendering until redirect occurs
+  if (!userRole || userRole !== "customer" || !emailVerified) return null;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
         {step === 1 && (
           <>
             <h1 className="text-2xl font-bold mb-4">Welcome to Pocket Agency!</h1>

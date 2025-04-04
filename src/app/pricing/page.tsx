@@ -5,6 +5,15 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/app/firebase/firebaseConfig";
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  getDoc,
+} from "firebase/firestore";
 
 const PricingPage = () => {
   const [user, loading] = useAuthState(auth);
@@ -12,7 +21,37 @@ const PricingPage = () => {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push("/dashboard");
+      // Check if the user has a pending subscription (indicating they are in the signup flow)
+      const checkSubscription = async () => {
+        const db = getFirestore();
+        const subQuery = query(
+          collection(db, "subscriptions"),
+          where("userId", "==", user.uid),
+          where("status", "==", "pending")
+        );
+        const subSnapshot = await getDocs(subQuery);
+
+        if (!subSnapshot.empty) {
+          // User is in the signup flow, redirect to customer details or cart
+          const userDocRef = doc(db, "users", user.uid);
+          const userDoc = await getDoc(userDocRef);
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            if (!userData.emailVerified) {
+              await auth.signOut();
+              router.push("/auth/login");
+            } else if (!userData.onboardingCompleted) {
+              router.push(`/auth/customer-details?plan=${userData.plan}`);
+            } else {
+              router.push(`/cart?plan=${userData.plan}`);
+            }
+          }
+        } else {
+          router.push("/dashboard");
+        }
+      };
+
+      checkSubscription();
     }
   }, [user, loading, router]);
 
