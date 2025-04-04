@@ -85,7 +85,7 @@ export default function Dashboard() {
           const subQuery = query(
             collection(db, "subscriptions"),
             where("userId", "==", currentUser.uid),
-            where("status", "==", "active")
+            where("status", "in", ["active", "pending"]) // Allow both active and pending subscriptions
           );
           const subSnapshot = await getDocs(subQuery);
 

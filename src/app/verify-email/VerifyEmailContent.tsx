@@ -7,7 +7,7 @@ import { db } from "@/app/firebase/firebaseConfig";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 export default function VerifyEmailContent() {
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState("Verifying your email...");
   const [error, setError] = useState("");
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -17,7 +17,7 @@ export default function VerifyEmailContent() {
   useEffect(() => {
     const verifyEmail = async () => {
       if (!token || !userId) {
-        setError("Invalid or missing token/userId");
+        setError("Invalid or missing token/userId. Please try again or request a new verification email.");
         return;
       }
 
@@ -26,7 +26,7 @@ export default function VerifyEmailContent() {
         const userDocRef = doc(db, "users", userId);
         const userDoc = await getDoc(userDocRef);
         if (!userDoc.exists()) {
-          setError("User not found");
+          setError("User not found. Please sign up again.");
           return;
         }
 
@@ -34,7 +34,7 @@ export default function VerifyEmailContent() {
         const storedToken = userData.verificationToken;
 
         if (!storedToken || token !== storedToken) {
-          setError("Invalid verification token");
+          setError("Invalid or expired verification token. Please request a new verification email.");
           return;
         }
 
@@ -49,7 +49,7 @@ export default function VerifyEmailContent() {
           router.push("/auth/login");
         }, 3000);
       } catch (err: unknown) {
-        let errorMessage = "An unexpected error occurred";
+        let errorMessage = "An unexpected error occurred. Please try again later.";
         if (err instanceof Error) {
           errorMessage = err.message;
         }
@@ -62,10 +62,12 @@ export default function VerifyEmailContent() {
   }, [token, userId, router]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <h1 className="text-3xl font-bold">Verify Your Email</h1>
-      {message && <p className="text-green-500 mt-2">{message}</p>}
-      {error && <p className="text-red-500 mt-2">{error}</p>}
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+        <h1 className="text-3xl font-bold text-center mb-6">Verify Your Email</h1>
+        {message && <p className="text-green-500 text-center mb-4">{message}</p>}
+        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
+      </div>
     </div>
   );
 }
