@@ -1,0 +1,97 @@
+.
+├── README.md
+├── directory_tree.txt
+├── eslint.config.mjs
+├── file_structure.txt
+├── next-env.d.ts
+├── next-sitemap.config.js
+├── next.config.ts
+├── package-lock.json
+├── package.json
+├── postcss.config.mjs
+├── public
+│   ├── admin-guide.pdf
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── next.svg
+│   ├── robots.txt
+│   ├── sitemap.xml
+│   ├── superadmin-guide.pdf
+│   ├── vercel.svg
+│   └── window.svg
+├── src
+│   └── app
+│       ├── admin
+│       │   └── page.tsx
+│       ├── admin-signup
+│       │   └── page.tsx
+│       ├── api
+│       │   ├── clear-verification-token
+│       │   │   └── route.ts
+│       │   ├── invite-admin
+│       │   │   └── route.ts
+│       │   ├── payfast-cancel-subscription
+│       │   │   └── route.ts
+│       │   ├── payfast-subscribe
+│       │   │   └── route.ts
+│       │   ├── payfast-update-subscription
+│       │   │   └── route.ts
+│       │   ├── payfast-webhook
+│       │   │   └── route.ts
+│       │   ├── send-email
+│       │   │   └── route.ts
+│       │   └── send-verification-email
+│       │       └── route.ts
+│       ├── auth
+│       │   ├── customer-details
+│       │   │   ├── CustomerDetailsForm.tsx
+│       │   │   └── page.tsx
+│       │   ├── login
+│       │   │   └── page.tsx
+│       │   └── signup
+│       │       ├── SignupForm.tsx
+│       │       └── page.tsx
+│       ├── billing
+│       │   └── page.tsx
+│       ├── cart
+│       │   ├── CartForm.tsx
+│       │   └── page.tsx
+│       ├── checkout
+│       │   ├── CheckoutContent.tsx
+│       │   └── page.tsx
+│       ├── components
+│       │   ├── Footer.tsx
+│       │   └── Navbar.tsx
+│       ├── config
+│       │   └── plans.ts
+│       ├── dashboard
+│       │   └── page.tsx
+│       ├── favicon.ico
+│       ├── firebase
+│       │   ├── admin.ts
+│       │   └── firebaseConfig.ts
+│       ├── globals.css
+│       ├── layout.tsx
+│       ├── onboarding
+│       │   └── page.tsx
+│       ├── page.tsx
+│       ├── pricing
+│       │   └── page.tsx
+│       ├── styles
+│       ├── success
+│       │   └── page.tsx
+│       ├── superadmin
+│       │   └── page.tsx
+│       ├── utils
+│       │   ├── createSuperadmin.ts
+│       │   └── email.ts
+│       ├── verify-email
+│       │   ├── VerifyEmailContent.tsx
+│       │   └── page.tsx
+│       └── verify-email-prompt
+│           └── page.tsx
+├── tailwind.config.js
+├── test-hash.ts
+└── tsconfig.json
+
+33 directories, 61 files
