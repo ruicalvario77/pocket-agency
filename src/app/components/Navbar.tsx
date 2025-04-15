@@ -6,17 +6,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import Image from 'next/image'; // Import Next.js Image component
+import Image from 'next/image';
 
 export default function Navbar() {
-  const [user, loading] = useAuthState(auth); // Include loading state
+  const [user, loading] = useAuthState(auth);
   const [role, setRole] = useState<string | null>(null);
   const [fullName, setFullName] = useState('');
   const [profilePic, setProfilePic] = useState('/default-avatar.svg');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const router = useRouter();
 
-  // Fetch user data (role, fullName, profilePic) from Firestore
   useEffect(() => {
     const fetchUserData = async () => {
       if (user) {
@@ -28,25 +27,22 @@ export default function Navbar() {
           setProfilePic(data.profilePic || '/default-avatar.svg');
         }
       } else {
-        setRole(null); // Clear role when logged out
-        setFullName(''); // Clear fullName when logged out
-        setProfilePic('/default-avatar.svg'); // Reset profilePic
+        setRole(null);
+        setFullName('');
+        setProfilePic('/default-avatar.svg');
       }
     };
     fetchUserData();
   }, [user]);
 
-  // Handle logout
   const handleLogout = async () => {
     await signOut(auth);
-    setIsDropdownOpen(false); // Close dropdown on logout
+    setIsDropdownOpen(false);
     router.push('/');
   };
 
-  // Dynamically set the dashboard link based on the user's role
   const dashboardLink = role ? `/${role}/dashboard` : '/';
 
-  // Show loading state while auth is being checked
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -59,8 +55,35 @@ export default function Navbar() {
           <Image src="/logo.svg" alt="Pocket Agency" width={40} height={40} />
         </Link>
 
-        {/* Middle: Customer Navigation */}
-        {user && role === 'customer' && (
+        {/* Middle: Frontend Navigation (when not logged in) */}
+        {!user ? (
+          <div className="flex space-x-6">
+            <div className="relative group">
+              <button className="hover:underline">Solutions</button>
+              <div className="absolute hidden group-hover:block bg-white text-black rounded shadow-lg">
+                <Link href="/solutions/graphic-design" className="block px-4 py-2 hover:bg-gray-100">
+                  Graphic Design
+                </Link>
+                <Link href="/solutions/website-design" className="block px-4 py-2 hover:bg-gray-100">
+                  Website Design
+                </Link>
+                <Link href="/solutions/video-editing" className="block px-4 py-2 hover:bg-gray-100">
+                  Video Editing
+                </Link>
+              </div>
+            </div>
+            <Link href="/how-it-works" className="hover:underline">
+              How It Works
+            </Link>
+            <Link href="/our-work" className="hover:underline">
+              Our Work
+            </Link>
+            <Link href="/pricing" className="hover:underline">
+              Pricing
+            </Link>
+          </div>
+        ) : role === 'customer' ? (
+          /* Customer Navigation */
           <div className="flex space-x-6">
             <Link href="/customer/requests" className="hover:underline">
               Requests
@@ -72,22 +95,18 @@ export default function Navbar() {
               Team
             </Link>
           </div>
-        )}
+        ) : null}
 
         {/* Right: Navigation Items */}
         <div className="flex items-center space-x-4">
           {user ? (
             role === 'customer' ? (
               <>
-                {/* Upgrade Button */}
                 <button className="bg-green-500 px-4 py-2 rounded hover:bg-green-600">
                   Upgrade
                 </button>
-                {/* Help Icon (Placeholder) */}
                 <button className="text-white hover:text-gray-200">?</button>
-                {/* Notifications Bell (Placeholder) */}
                 <button className="text-white hover:text-gray-200">🔔</button>
-                {/* Profile Section with Dropdown */}
                 <div className="relative">
                   <div
                     className="flex items-center space-x-2 cursor-pointer"
@@ -128,7 +147,6 @@ export default function Navbar() {
                 </div>
               </>
             ) : (
-              /* Navigation for Other Roles */
               <>
                 <Link href={dashboardLink}>
                   <p className="mr-4 hover:underline">Dashboard</p>
@@ -157,9 +175,17 @@ export default function Navbar() {
               </>
             )
           ) : (
-            <Link href="/auth/login">
-              <p className="hover:underline">Login</p>
-            </Link>
+            <>
+              <Link href="/auth/login" className="hover:underline">
+                Sign In
+              </Link>
+              <Link href="/auth/signup" className="bg-blue-500 px-4 py-2 rounded hover:bg-blue-700">
+                Get Started
+              </Link>
+              <Link href="/book-a-call" className="hover:underline">
+                Book a Call
+              </Link>
+            </>
           )}
         </div>
       </div>
