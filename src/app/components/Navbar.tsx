@@ -6,13 +6,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
+import Image from 'next/image'; // Added import for Image
 
 export default function Navbar() {
-  const [user, loading] = useAuthState(auth);
+  const [user, loading] = useAuthState(auth); // Keep loading and use it
   const [role, setRole] = useState<string | null>(null);
   const router = useRouter();
 
-  // Fetch the user's role from Firestore when the user is authenticated
+  // Fetch user's role from Firestore when authenticated
   useEffect(() => {
     const fetchRole = async () => {
       if (user) {
@@ -21,7 +22,7 @@ export default function Navbar() {
           setRole(userDoc.data().role);
         }
       } else {
-        setRole(null); // Clear role when user is logged out
+        setRole(null); // Clear role when logged out
       }
     };
     fetchRole();
@@ -33,16 +34,21 @@ export default function Navbar() {
     router.push('/');
   };
 
-  // Dynamically set the dashboard link based on the user's role
+  // Set dashboard link based on role
   const dashboardLink = role ? `/${role}/dashboard` : '/';
+
+  // Show loading state while auth is being checked
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <nav className="bg-blue-600 p-4 text-white">
       <div className="container mx-auto flex justify-between items-center">
         <Link href="/">
-          <img src="/logo.svg" alt="Pocket Agency" className="h-10" />
+          <Image src="/logo.svg" alt="Pocket Agency" width={40} height={40} />
         </Link>
-        {/* Customer Navigation - Only shown if user is authenticated and role is 'customer' */}
+        {/* Customer Navigation - Shown only for authenticated customers */}
         {user && role === 'customer' && (
           <div className="flex space-x-6">
             <Link href="/customer/requests" className="hover:underline">
