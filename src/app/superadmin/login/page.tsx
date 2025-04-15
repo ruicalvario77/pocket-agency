@@ -14,7 +14,7 @@ export default function SuperAdminLogin() {
       await signInWithEmailAndPassword(auth, email, password);
       // Redirect or handle success
       window.location.href = "/superadmin/dashboard";
-    } catch (err) {
+    } catch {
       setError("Invalid credentials");
     }
   };
