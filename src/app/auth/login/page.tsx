@@ -32,13 +32,13 @@ export default function Login() {
             router.push('/superadmin/dashboard');
             break;
           case 'admin':
-            router.push('/admin');
+            router.push('/admin/dashboard');
             break;
           case 'customer':
-            router.push('/customer');
+            router.push('/customer/dashboard');
             break;
           case 'contractor':
-            router.push('/contractor');
+            router.push('/contractor/dashboard');
             break;
           default:
             setError('Unknown role');
