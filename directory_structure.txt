@@ -12,23 +12,27 @@
 ├── src
 │   └── app
 │       ├── admin
-│       │   └── page.tsx
+│       │   └── dashboard
+│       │       └── page.tsx
+│       ├── auth
+│       │   └── login
+│       │       └── page.tsx
 │       ├── components
 │       │   ├── AuthWrapper.tsx
 │       │   ├── Footer.tsx
 │       │   └── Navbar.tsx
 │       ├── contractor
-│       │   └── page.tsx
+│       │   └── dashboard
+│       │       └── page.tsx
 │       ├── customer
-│       │   └── page.tsx
+│       │   └── dashboard
+│       │       └── page.tsx
 │       ├── firebase
 │       │   └── firebaseConfig.ts
 │       ├── layout.tsx
 │       ├── page.tsx
 │       ├── superadmin
-│       │   ├── dashboard
-│       │   │   └── page.tsx
-│       │   └── login
+│       │   └── dashboard
 │       │       └── page.tsx
 │       └── unauthorized
 │           └── page.tsx
@@ -36,4 +40,4 @@
 ├── test-hash.ts
 └── tsconfig.json
 
-12 directories, 24 files
+16 directories, 24 files
