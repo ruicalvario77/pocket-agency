@@ -1,4 +1,3 @@
-// src/app/components/Navbar.tsx
 "use client";
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/app/firebase/firebaseConfig';
@@ -13,6 +12,7 @@ export default function Navbar() {
   const [role, setRole] = useState<string | null>(null);
   const router = useRouter();
 
+  // Fetch the user's role from Firestore when the user is authenticated
   useEffect(() => {
     const fetchRole = async () => {
       if (user) {
@@ -25,11 +25,13 @@ export default function Navbar() {
     fetchRole();
   }, [user]);
 
+  // Handle logout
   const handleLogout = async () => {
     await signOut(auth);
     router.push('/');
   };
 
+  // Dynamically set the dashboard link based on the user's role
   const dashboardLink = role ? `/${role}/dashboard` : '/';
 
   return (
@@ -44,6 +46,21 @@ export default function Navbar() {
               <Link href={dashboardLink}>
                 <p className="mr-4">Dashboard</p>
               </Link>
+              {role === 'admin' && (
+                <Link href="/admin/manage-users">
+                  <p className="mr-4">Manage Users</p>
+                </Link>
+              )}
+              {role === 'superadmin' && (
+                <>
+                  <Link href="/superadmin/manage-admins">
+                    <p className="mr-4">Manage Admins</p>
+                  </Link>
+                  <Link href="/superadmin/analytics">
+                    <p className="mr-4">Analytics</p>
+                  </Link>
+                </>
+              )}
               <button onClick={handleLogout} className="text-white">
                 Logout
               </button>

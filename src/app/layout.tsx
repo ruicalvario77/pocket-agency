@@ -1,7 +1,6 @@
-// src/app/layout.tsx
 import { ReactNode } from 'react';
-import Navbar from '@/app/components/Navbar'; // Adjust path as needed
-import Footer from '@/app/components/Footer'; // Adjust path as needed
+import Navbar from '@/app/components/Navbar';
+import Footer from '@/app/components/Footer'; // Optional
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -12,9 +11,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="icon" href="/favicon.ico" />
       </head>
       <body className="flex flex-col min-h-screen bg-gray-50">
-        <Navbar /> {/* No props needed */}
+        <Navbar />
         <main className="flex-grow">{children}</main>
-        <Footer />
+        <Footer /> {/* Optional */}
       </body>
     </html>
   );
