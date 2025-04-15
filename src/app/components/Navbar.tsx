@@ -1,6 +1,12 @@
+// src/app/components/Navbar.tsx
+"use client";
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '@/app/firebase/firebaseConfig'; // Adjust path as needed
 import { User } from 'firebase/auth';
 
-export default function Navbar({ user }: { user: User | null | undefined }) {
+export default function Navbar() {
+  const [user] = useAuthState(auth);
+
   return (
     <nav className="bg-blue-600 p-4 text-white">
       <div className="container mx-auto flex justify-between">
