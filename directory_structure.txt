@@ -1,0 +1,31 @@
+.
+├── README.md
+├── directory_structure.txt
+├── eslint.config.mjs
+├── next-env.d.ts
+├── next-sitemap.config.js
+├── next.config.ts
+├── package-lock.json
+├── package.json
+├── postcss.config.mjs
+├── public
+├── src
+│   └── app
+│       ├── components
+│       │   ├── AuthWrapper.tsx
+│       │   ├── Footer.tsx
+│       │   └── Navbar.tsx
+│       ├── firebase
+│       │   └── firebaseConfig.ts
+│       ├── layout.tsx
+│       ├── page.tsx
+│       └── superadmin
+│           ├── dashboard
+│           │   └── page.tsx
+│           └── login
+│               └── page.tsx
+├── tailwind.config.js
+├── test-hash.ts
+└── tsconfig.json
+
+8 directories, 20 files
