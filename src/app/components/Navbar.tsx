@@ -1,19 +1,36 @@
 // src/app/components/Navbar.tsx
 "use client";
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '@/app/firebase/firebaseConfig'; // Adjust path to your Firebase config
+import { auth, db } from '@/app/firebase/firebaseConfig';
 import { signOut } from 'firebase/auth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function Navbar() {
   const [user] = useAuthState(auth);
+  const [role, setRole] = useState<string | null>(null);
   const router = useRouter();
 
+  useEffect(() => {
+    const fetchRole = async () => {
+      if (user) {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          setRole(userDoc.data().role);
+        }
+      }
+    };
+    fetchRole();
+  }, [user]);
+
   const handleLogout = async () => {
-    await signOut(auth); // Sign out from Firebase
-    router.push('/'); // Redirect to home page
+    await signOut(auth);
+    router.push('/');
   };
+
+  const dashboardLink = role ? `/${role}/dashboard` : '/';
 
   return (
     <nav className="bg-blue-600 p-4 text-white">
@@ -24,7 +41,7 @@ export default function Navbar() {
         <div>
           {user ? (
             <>
-              <Link href="/dashboard">
+              <Link href={dashboardLink}>
                 <p className="mr-4">Dashboard</p>
               </Link>
               <button onClick={handleLogout} className="text-white">
