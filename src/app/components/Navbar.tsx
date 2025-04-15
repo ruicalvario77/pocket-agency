@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 
 export default function Navbar() {
-  const [user] = useAuthState(auth);
+  const [user, loading] = useAuthState(auth);
   const [role, setRole] = useState<string | null>(null);
   const router = useRouter();
 
@@ -20,6 +20,8 @@ export default function Navbar() {
         if (userDoc.exists()) {
           setRole(userDoc.data().role);
         }
+      } else {
+        setRole(null); // Clear role when user is logged out
       }
     };
     fetchRole();
@@ -36,31 +38,30 @@ export default function Navbar() {
 
   return (
     <nav className="bg-blue-600 p-4 text-white">
-      <div className="container mx-auto flex justify-between">
+      <div className="container mx-auto flex justify-between items-center">
         <Link href="/">
-          <p>Pocket Agency</p>
+          <img src="/logo.svg" alt="Pocket Agency" className="h-10" />
         </Link>
-        <div>
+        {/* Customer Navigation - Only shown if user is authenticated and role is 'customer' */}
+        {user && role === 'customer' && (
+          <div className="flex space-x-6">
+            <Link href="/customer/requests" className="hover:underline">
+              Requests
+            </Link>
+            <Link href="/customer/brands" className="hover:underline">
+              Brands
+            </Link>
+            <Link href="/customer/team" className="hover:underline">
+              Team
+            </Link>
+          </div>
+        )}
+        <div className="flex items-center space-x-4">
           {user ? (
             <>
               <Link href={dashboardLink}>
                 <p className="mr-4">Dashboard</p>
               </Link>
-              {role === 'admin' && (
-                <Link href="/admin/manage-users">
-                  <p className="mr-4">Manage Users</p>
-                </Link>
-              )}
-              {role === 'superadmin' && (
-                <>
-                  <Link href="/superadmin/manage-admins">
-                    <p className="mr-4">Manage Admins</p>
-                  </Link>
-                  <Link href="/superadmin/analytics">
-                    <p className="mr-4">Analytics</p>
-                  </Link>
-                </>
-              )}
               <button onClick={handleLogout} className="text-white">
                 Logout
               </button>

@@ -1,4 +1,3 @@
-// src/app/components/AuthWrapper.tsx
 "use client";
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { useRouter } from 'next/navigation';
