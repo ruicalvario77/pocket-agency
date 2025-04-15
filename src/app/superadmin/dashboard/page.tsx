@@ -1,13 +1,11 @@
-// app/superadmin/dashboard/page.tsx
-"use client";
 import AuthWrapper from '@/app/components/AuthWrapper';
 
-export default function Dashboard() {
+export default function SuperAdminDashboard() {
   return (
-    <AuthWrapper>
+    <AuthWrapper requiredRole="superadmin">
       <div className="p-6">
         <h1>Super Admin Dashboard</h1>
-        <p>Welcome to the dashboard!</p>
+        <p>Welcome, Super Admin! Here you can manage everything.</p>
       </div>
     </AuthWrapper>
   );

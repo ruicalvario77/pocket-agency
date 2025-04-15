@@ -1,21 +1,37 @@
-// app/components/AuthWrapper.tsx
+// src/app/components/AuthWrapper.tsx
 "use client";
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { useRouter } from 'next/navigation'; // Use next/navigation instead of next/router
-import { useEffect } from 'react';
-import { auth } from '@/app/firebase/firebaseConfig';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { auth, db } from '@/app/firebase/firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 
-export default function AuthWrapper({ children }: { children: React.ReactNode }) {
+export default function AuthWrapper({ children, requiredRole }: { children: React.ReactNode, requiredRole: string }) {
   const [user, loading] = useAuthState(auth);
+  const [role, setRole] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/superadmin/login');
-    }
-  }, [user, loading, router]);
+    const fetchRole = async () => {
+      if (user) {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          setRole(userDoc.data().role);
+        }
+      }
+    };
+    fetchRole();
+  }, [user]);
 
-  if (loading) {
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/auth/login');
+    } else if (role && role !== requiredRole) {
+      router.push('/unauthorized');
+    }
+  }, [user, loading, role, router, requiredRole]);
+
+  if (loading || role === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p>Loading...</p>
@@ -23,8 +39,8 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     );
   }
 
-  if (!user) {
-    return null; // Redirecting will happen via useEffect
+  if (!user || role !== requiredRole) {
+    return null; // Redirecting happens via useEffect
   }
 
   return <>{children}</>;

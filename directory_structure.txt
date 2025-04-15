@@ -11,21 +11,29 @@
 ├── public
 ├── src
 │   └── app
+│       ├── admin
+│       │   └── page.tsx
 │       ├── components
 │       │   ├── AuthWrapper.tsx
 │       │   ├── Footer.tsx
 │       │   └── Navbar.tsx
+│       ├── contractor
+│       │   └── page.tsx
+│       ├── customer
+│       │   └── page.tsx
 │       ├── firebase
 │       │   └── firebaseConfig.ts
 │       ├── layout.tsx
 │       ├── page.tsx
-│       └── superadmin
-│           ├── dashboard
-│           │   └── page.tsx
-│           └── login
-│               └── page.tsx
+│       ├── superadmin
+│       │   ├── dashboard
+│       │   │   └── page.tsx
+│       │   └── login
+│       │       └── page.tsx
+│       └── unauthorized
+│           └── page.tsx
 ├── tailwind.config.js
 ├── test-hash.ts
 └── tsconfig.json
 
-8 directories, 20 files
+12 directories, 24 files
