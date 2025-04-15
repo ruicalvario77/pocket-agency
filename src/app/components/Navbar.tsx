@@ -6,16 +6,21 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
+import Image from 'next/image'; // Added import for Image
 
 export default function Navbar() {
-  const [user] = useAuthState(auth);
+  const [user, loading] = useAuthState(auth); // Keep loading and use it
   const [role, setRole] = useState<string | null>(null);
   const [fullName, setFullName] = useState('');
   const [profilePic, setProfilePic] = useState('/default-avatar.svg');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const router = useRouter();
 
+<<<<<<< HEAD
   // Fetch user data (role, fullName, profilePic) from Firestore
+=======
+  // Fetch user's role from Firestore when authenticated
+>>>>>>> feature/portal-layouts
   useEffect(() => {
     const fetchUserData = async () => {
       if (user) {
@@ -26,6 +31,8 @@ export default function Navbar() {
           setFullName(data.fullName || 'User');
           setProfilePic(data.profilePic || '/default-avatar.svg');
         }
+      } else {
+        setRole(null); // Clear role when logged out
       }
     };
     fetchUserData();
@@ -38,12 +45,18 @@ export default function Navbar() {
     router.push('/');
   };
 
-  // Dynamically set the dashboard link based on the user's role
+  // Set dashboard link based on role
   const dashboardLink = role ? `/${role}/dashboard` : '/';
+
+  // Show loading state while auth is being checked
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <nav className="bg-blue-600 p-4 text-white">
       <div className="container mx-auto flex justify-between items-center">
+<<<<<<< HEAD
         {/* Left: Logo */}
         <Link href="/">
           <img src="/logo.svg" alt="Pocket Agency" className="h-10" />
@@ -51,6 +64,13 @@ export default function Navbar() {
 
         {/* Middle: Customer Navigation */}
         {role === 'customer' && (
+=======
+        <Link href="/">
+          <Image src="/logo.svg" alt="Pocket Agency" width={40} height={40} />
+        </Link>
+        {/* Customer Navigation - Shown only for authenticated customers */}
+        {user && role === 'customer' && (
+>>>>>>> feature/portal-layouts
           <div className="flex space-x-6">
             <Link href="/customer/requests" className="hover:underline">
               Requests
@@ -63,6 +83,7 @@ export default function Navbar() {
             </Link>
           </div>
         )}
+<<<<<<< HEAD
 
         {/* Right: Navigation Items */}
         <div className="flex items-center space-x-4">
@@ -144,6 +165,18 @@ export default function Navbar() {
                 </button>
               </>
             )
+=======
+        <div className="flex items-center space-x-4">
+          {user ? (
+            <>
+              <Link href={dashboardLink}>
+                <p className="mr-4">Dashboard</p>
+              </Link>
+              <button onClick={handleLogout} className="text-white">
+                Logout
+              </button>
+            </>
+>>>>>>> feature/portal-layouts
           ) : (
             <Link href="/auth/login">
               <p className="hover:underline">Login</p>
