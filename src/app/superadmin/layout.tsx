@@ -12,9 +12,11 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   const getBreadcrumbs = () => {
     const pathSegments = pathname.split('/').filter(segment => segment);
     const breadcrumbs = [];
+    let currentPath = '';
     for (const segment of pathSegments) {
+      currentPath += `/${segment}`;
       const label = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
-      breadcrumbs.push(label);
+      breadcrumbs.push({ label, path: currentPath });
     }
     return breadcrumbs;
   };

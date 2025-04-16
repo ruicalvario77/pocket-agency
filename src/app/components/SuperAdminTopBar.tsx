@@ -4,8 +4,9 @@ import { auth, db } from '@/app/firebase/firebaseConfig';
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import Image from 'next/image';
+import Link from 'next/link'; // Import Link for clickable breadcrumbs
 
-export default function SuperAdminTopBar({ breadcrumbs, onToggleSidebar }: { breadcrumbs: string[], onToggleSidebar: () => void }) {
+export default function SuperAdminTopBar({ breadcrumbs, onToggleSidebar }: { breadcrumbs: { label: string, path: string }[], onToggleSidebar: () => void }) {
   const [user] = useAuthState(auth);
   const [fullName, setFullName] = useState('');
   const [profilePic, setProfilePic] = useState('/default-avatar.svg');
@@ -45,13 +46,15 @@ export default function SuperAdminTopBar({ breadcrumbs, onToggleSidebar }: { bre
         <span>{fullName}</span>
       </div>
 
-      {/* Middle: Breadcrumbs (aligned left) */}
+      {/* Middle: Breadcrumbs (aligned left, clickable) */}
       <div className="flex-1 ml-4">
         <div className="text-sm">
           {breadcrumbs.map((crumb, index) => (
             <span key={index}>
               {index > 0 && ' / '}
-              <span>{crumb}</span>
+              <Link href={crumb.path} className="hover:underline">
+                {crumb.label}
+              </Link>
             </span>
           ))}
         </div>
