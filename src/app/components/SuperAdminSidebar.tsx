@@ -1,18 +1,54 @@
 "use client";
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth, db } from '@/app/firebase/firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
+import Image from 'next/image';
 
 export default function SuperAdminSidebar({ isCollapsed }: { isCollapsed: boolean }) {
+  const [user] = useAuthState(auth);
+  const [fullName, setFullName] = useState('');
+  const [profilePic, setProfilePic] = useState('/default-avatar.svg');
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [isCustomersOpen, setIsCustomersOpen] = useState(false);
   const [isContractorsOpen, setIsContractorsOpen] = useState(false);
   const [isAccountManagersOpen, setIsAccountManagersOpen] = useState(false);
 
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (user) {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setFullName(data.fullName || 'Super Admin');
+          setProfilePic(data.profilePic || '/default-avatar.svg');
+        }
+      }
+    };
+    fetchUserData();
+  }, [user]);
+
   return (
     <div className={`bg-gray-900 text-white h-screen ${isCollapsed ? 'w-16' : 'w-64'} transition-all duration-300`}>
+      {/* Profile Section */}
+      <div className={`p-4 flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'}`}>
+        <Image
+          src={profilePic}
+          alt="Profile"
+          width={40}
+          height={40}
+          className="rounded-full"
+        />
+        {!isCollapsed && <span>{fullName}</span>}
+      </div>
+
+      {/* Super Admin Title */}
       <div className="p-4">
         <h2 className={`${isCollapsed ? 'hidden' : 'block'} text-lg font-bold mb-4`}>Super Admin</h2>
       </div>
+
+      {/* Menu Items */}
       <ul className="space-y-2">
         <li>
           <Link href="/superadmin/dashboard" className="flex items-center p-4 hover:bg-gray-700">

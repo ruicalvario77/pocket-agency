@@ -1,31 +1,10 @@
 "use client";
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db } from '@/app/firebase/firebaseConfig';
-import { useEffect, useState } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
-import Image from 'next/image';
-import Link from 'next/link'; // Import Link for clickable breadcrumbs
+import { useState } from 'react';
+import Link from 'next/link';
 
 export default function SuperAdminTopBar({ breadcrumbs, onToggleSidebar }: { breadcrumbs: { label: string, path: string }[], onToggleSidebar: () => void }) {
-  const [user] = useAuthState(auth);
-  const [fullName, setFullName] = useState('');
-  const [profilePic, setProfilePic] = useState('/default-avatar.svg');
   const [darkMode, setDarkMode] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (user) {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          setFullName(data.fullName || 'Super Admin');
-          setProfilePic(data.profilePic || '/default-avatar.svg');
-        }
-      }
-    };
-    fetchUserData();
-  }, [user]);
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -34,20 +13,8 @@ export default function SuperAdminTopBar({ breadcrumbs, onToggleSidebar }: { bre
 
   return (
     <div className="bg-gray-800 text-white p-4 flex justify-between items-center">
-      {/* Left: Profile Pic and Name */}
-      <div className="flex items-center space-x-3">
-        <Image
-          src={profilePic}
-          alt="Profile"
-          width={40}
-          height={40}
-          className="rounded-full"
-        />
-        <span>{fullName}</span>
-      </div>
-
       {/* Middle: Breadcrumbs (aligned left, clickable) */}
-      <div className="flex-1 ml-4">
+      <div className="flex-1">
         <div className="text-sm">
           {breadcrumbs.map((crumb, index) => (
             <span key={index}>
@@ -60,7 +27,7 @@ export default function SuperAdminTopBar({ breadcrumbs, onToggleSidebar }: { bre
         </div>
       </div>
 
-      {/* Right: Search, Dark Mode Toggle, Notifications */}
+      {/* Right: Search, Dark Mode Toggle, Notifications, Sidebar Toggle */}
       <div className="flex items-center space-x-4">
         <input
           type="text"

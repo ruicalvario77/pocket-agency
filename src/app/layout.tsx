@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import Navbar from '@/app/components/Navbar';
-import './globals.css'; // Import global CSS
-import Footer from '@/app/components/Footer'; // Optional
+import './globals.css';
+import Footer from '@/app/components/Footer';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -14,7 +14,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="flex flex-col min-h-screen bg-gray-50">
         <Navbar />
         <main className="flex-grow">{children}</main>
-        <Footer /> {/* Optional */}
+        <Footer />
       </body>
     </html>
   );
