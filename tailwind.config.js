@@ -4,15 +4,6 @@ module.exports = {
     "./src/**/*.{js,ts,jsx,tsx}",
     "./src/app/test-tailwind/page.tsx",
   ],
-  safelist: [
-    "bg-blue-500",
-    "p-8",
-    "text-white",
-    "text-3xl",
-    "bg-gray-50",
-    "bg-gray-800",
-    "bg-gray-900",
-  ],
   theme: {
     extend: {
       animation: {
