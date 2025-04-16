@@ -3,7 +3,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/app/firebase/firebaseConfig';
 import { signOut } from 'firebase/auth';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import Image from 'next/image';
@@ -15,7 +15,9 @@ export default function Navbar() {
   const [profilePic, setProfilePic] = useState('/default-avatar.svg');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
+  // Fetch user data (role, fullName, profilePic) from Firestore
   useEffect(() => {
     const fetchUserData = async () => {
       if (user) {
@@ -35,14 +37,22 @@ export default function Navbar() {
     fetchUserData();
   }, [user]);
 
+  // Handle logout
   const handleLogout = async () => {
     await signOut(auth);
     setIsDropdownOpen(false);
     router.push('/');
   };
 
+  // Dynamically set the dashboard link based on the user's role
   const dashboardLink = role ? `/${role}/dashboard` : '/';
 
+  // Hide Navbar for /superadmin routes
+  if (pathname.startsWith('/superadmin')) {
+    return null;
+  }
+
+  // Show loading state while auth is being checked
   if (loading) {
     return <div>Loading...</div>;
   }
