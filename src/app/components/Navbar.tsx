@@ -47,8 +47,8 @@ export default function Navbar() {
   // Dynamically set the dashboard link based on the user's role
   const dashboardLink = role ? `/${role}/dashboard` : '/';
 
-  // Hide Navbar for /superadmin routes
-  if (pathname.startsWith('/superadmin')) {
+  // Hide Navbar for /superadmin and /admin routes
+  if (pathname.startsWith('/superadmin') || pathname.startsWith('/admin')) {
     return null;
   }
 

@@ -1,11 +1,11 @@
 import AuthWrapper from '@/app/components/AuthWrapper';
 
-export default function AdminPage() {
+export default function DashboardPage() {
   return (
     <AuthWrapper requiredRole="admin">
-      <div className="p-6">
-        <h1>Admin Dashboard</h1>
-        <p>Welcome, Admin! Here you can manage users and tasks.</p>
+      <div>
+        <h1 className="text-3xl font-bold mb-4">Account Manager Dashboard</h1>
+        <p>Welcome to the Account Manager Dashboard! This is your overview page.</p>
       </div>
     </AuthWrapper>
   );

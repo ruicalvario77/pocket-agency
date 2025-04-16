@@ -1,10 +1,10 @@
 "use client";
 import { useState } from 'react';
 import TopBar from '@/app/components/TopBar';
-import SuperAdminSidebar from '@/app/components/SuperAdminSidebar';
+import AccountManagerSidebar from '@/app/components/AccountManagerSidebar';
 import { usePathname } from 'next/navigation';
 
-export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
+export default function AccountManagerLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const pathname = usePathname();
 
@@ -27,7 +27,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="flex">
-      <SuperAdminSidebar isCollapsed={isSidebarCollapsed} />
+      <AccountManagerSidebar isCollapsed={isSidebarCollapsed} />
       <div className="flex-1">
         <TopBar breadcrumbs={getBreadcrumbs()} onToggleSidebar={toggleSidebar} />
         <div className="p-6">{children}</div>
