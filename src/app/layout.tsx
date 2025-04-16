@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import Navbar from '@/app/components/Navbar';
+import './globals.css'; // Import global CSS
 import Footer from '@/app/components/Footer'; // Optional
 
 export default function RootLayout({ children }: { children: ReactNode }) {
