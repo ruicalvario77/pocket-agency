@@ -7,8 +7,13 @@ describe('Firestore Tests', () => {
 
   // Sign in a test user before all tests
   beforeAll(async () => {
-    const userCredential = await signInWithEmailAndPassword(auth, 'rui@pocket-agency.co.za', 'Ru1j3ssale77#77');
-    testUserId = userCredential.user.uid; // Store the authenticated user's UID
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, 'rui@pocket-agency.co.za', 'Ru1j3ssale77#77');
+      testUserId = userCredential.user.uid;
+    } catch (error) {
+      console.error('Authentication error details:', error);
+      throw error;
+    }
   });
 
   // Sign out after all tests
