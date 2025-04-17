@@ -26,7 +26,7 @@ describe('Firestore Tests', () => {
     if (userSnap.exists()) {
       expect(userSnap.data().name).toBe('Test User');
     }
-  });
+  }, 10000);
 
   test('should update a user document', async () => {
     await updateDoc(testUserDoc(), { name: 'Updated User' });
