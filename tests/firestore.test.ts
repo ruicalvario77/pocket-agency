@@ -42,4 +42,13 @@ describe('Firestore Tests', () => {
     const userSnap = await getDoc(testUserDoc());
     expect(userSnap.exists()).toBe(false);
   });
+
+  test('should deny non-admin access to admin-only collection', async () => {
+    const adminDataDoc = doc(db, 'adminData', 'someDoc');
+    try {
+      await getDoc(adminDataDoc);
+    } catch (error: any) {
+      expect(error.code).toBe('permission-denied');
+    }
+  });
 });
