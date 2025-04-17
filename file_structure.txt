@@ -1,0 +1,152 @@
+.
+├── README.md
+├── eslint.config.mjs
+├── file_structure.txt
+├── next-env.d.ts
+├── next-sitemap.config.js
+├── next.config.ts
+├── package-lock.json
+├── package.json
+├── postcss.config.mjs
+├── public
+├── src
+│   └── app
+│       ├── admin
+│       │   ├── ai-recommendations
+│       │   │   └── page.tsx
+│       │   ├── contractor-assignment
+│       │   │   └── page.tsx
+│       │   ├── customer-revisions
+│       │   │   └── page.tsx
+│       │   ├── dashboard
+│       │   │   └── page.tsx
+│       │   ├── layout.tsx
+│       │   ├── messages
+│       │   │   └── page.tsx
+│       │   ├── notifications
+│       │   │   └── page.tsx
+│       │   ├── reviewing-work
+│       │   │   └── page.tsx
+│       │   ├── settings
+│       │   │   └── page.tsx
+│       │   └── tracking-progress
+│       │       └── page.tsx
+│       ├── api
+│       │   └── sentry-example-api
+│       │       └── route.ts
+│       ├── auth
+│       │   ├── login
+│       │   │   └── page.tsx
+│       │   └── signup
+│       │       └── page.tsx
+│       ├── book-a-call
+│       │   └── page.tsx
+│       ├── components
+│       │   ├── AccountManagerSidebar.tsx
+│       │   ├── AuthWrapper.tsx
+│       │   ├── ContractorSidebar.tsx
+│       │   ├── Footer.tsx
+│       │   ├── Navbar.tsx
+│       │   ├── SuperAdminSidebar.tsx
+│       │   └── TopBar.tsx
+│       ├── contractor
+│       │   ├── dashboard
+│       │   │   └── page.tsx
+│       │   ├── layout.tsx
+│       │   ├── messages
+│       │   │   └── page.tsx
+│       │   ├── profile
+│       │   │   ├── availability
+│       │   │   ├── settings
+│       │   │   └── skills
+│       │   ├── support
+│       │   │   ├── escalations
+│       │   │   ├── help
+│       │   │   └── report
+│       │   └── tasks
+│       │       ├── assigned
+│       │       ├── revisions
+│       │       └── submit
+│       ├── customer
+│       │   ├── brands
+│       │   │   └── page.tsx
+│       │   ├── dashboard
+│       │   │   └── page.tsx
+│       │   ├── requests
+│       │   │   └── page.tsx
+│       │   ├── settings
+│       │   │   └── page.tsx
+│       │   ├── subscriptions
+│       │   │   └── page.tsx
+│       │   └── team
+│       │       └── page.tsx
+│       ├── firebase
+│       │   └── firebaseConfig.ts
+│       ├── globals.css
+│       ├── how-it-works
+│       │   └── page.tsx
+│       ├── layout.tsx
+│       ├── our-work
+│       │   └── page.tsx
+│       ├── page.tsx
+│       ├── pricing
+│       │   └── page.tsx
+│       ├── sentry-example-page
+│       │   └── page.tsx
+│       ├── solutions
+│       │   ├── graphic-design
+│       │   │   └── page.tsx
+│       │   ├── page.tsx
+│       │   ├── video-editing
+│       │   │   └── page.tsx
+│       │   └── website-design
+│       │       └── page.tsx
+│       ├── superadmin
+│       │   ├── account-manager-management
+│       │   │   └── page.tsx
+│       │   ├── account-manager-performance
+│       │   │   └── page.tsx
+│       │   ├── account-manager-roles
+│       │   │   └── page.tsx
+│       │   ├── account-manager-training
+│       │   │   └── page.tsx
+│       │   ├── additional-metrics
+│       │   │   └── page.tsx
+│       │   ├── ai-insights
+│       │   │   └── page.tsx
+│       │   ├── billing
+│       │   │   └── page.tsx
+│       │   ├── contractor-applications
+│       │   │   └── page.tsx
+│       │   ├── contractor-performance
+│       │   │   └── page.tsx
+│       │   ├── contractor-schedules
+│       │   │   └── page.tsx
+│       │   ├── contractor-work-approvals
+│       │   │   └── page.tsx
+│       │   ├── customer-messaging
+│       │   │   └── page.tsx
+│       │   ├── customer-satisfaction
+│       │   │   └── page.tsx
+│       │   ├── customer-subscriptions
+│       │   │   └── page.tsx
+│       │   ├── customer-tasks-performance
+│       │   │   └── page.tsx
+│       │   ├── dashboard
+│       │   │   └── page.tsx
+│       │   ├── financial-dashboard
+│       │   │   └── page.tsx
+│       │   ├── layout.tsx
+│       │   ├── marketing-dashboard
+│       │   │   └── page.tsx
+│       │   └── team-performance
+│       │       └── page.tsx
+│       ├── test-tailwind
+│       │   └── page.tsx
+│       └── unauthorized
+│           └── page.tsx
+├── tailwind.config.js
+├── test-hash.ts
+└── tsconfig.json
+
+73 directories, 76 files
