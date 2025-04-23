@@ -19,7 +19,7 @@ describe('Authentication Tests', () => {
       await signInWithEmailAndPassword(auth, 'wrong@example.com', 'wrongpassword');
       throw new Error('Should have failed');
     } catch (error: any) {
-      expect(error.code).toBe('auth/wrong-error'); // Updated error code
+      expect(error.code).toBe('auth/invalid-credential'); // Updated error code
     }
   });
 });
