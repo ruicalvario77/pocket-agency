@@ -2,16 +2,16 @@
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db } from "@/app/firebase/firebaseConfig";
 import { useEffect, useState } from "react";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, Timestamp } from "firebase/firestore"; // Import Timestamp
 import AuthWrapper from "@/app/components/AuthWrapper";
 import Link from "next/link";
 
-// Define the Subscription interface
+// Define the Subscription interface with Timestamp
 interface Subscription {
   plan: string;
   status: string;
-  startDate: Date;
-  nextBillingDate: Date;
+  startDate: Timestamp; // Use Timestamp instead of Date
+  nextBillingDate: Timestamp; // Use Timestamp instead of Date
 }
 
 // Define the Task interface
@@ -24,9 +24,7 @@ interface Task {
 export default function CustomerDashboard() {
   const [user] = useAuthState(auth);
   const [fullName, setFullName] = useState("Customer");
-  // Use the Subscription type with null as a possible value
   const [subscription, setSubscription] = useState<Subscription | null>(null);
-  // Use the Task array type
   const [tasks, setTasks] = useState<Task[]>([]);
 
   // Fetch user data, subscription, and tasks from Firestore
@@ -48,12 +46,12 @@ export default function CustomerDashboard() {
         const subSnapshot = await getDocs(subQuery);
         if (!subSnapshot.empty) {
           const subData = subSnapshot.docs[0].data();
-          // Convert Firestore Timestamps to Dates and set subscription
+          // Set subscription with Timestamp fields
           setSubscription({
             plan: subData.plan as string,
             status: subData.status as string,
-            startDate: (subData.startDate as any).toDate(), // Firestore Timestamp to Date
-            nextBillingDate: (subData.nextBillingDate as any).toDate(), // Firestore Timestamp to Date
+            startDate: subData.startDate as Timestamp, // Type as Timestamp
+            nextBillingDate: subData.nextBillingDate as Timestamp, // Type as Timestamp
           });
         }
 
@@ -61,7 +59,7 @@ export default function CustomerDashboard() {
         const tasksQuery = query(
           collection(db, "tasks"),
           where("userId", "==", user.uid),
-          where("status", "==", "Submitted") // Adjust status as needed
+          where("status", "==", "Submitted")
         );
         const tasksSnapshot = await getDocs(tasksQuery);
         setTasks(
@@ -93,8 +91,8 @@ export default function CustomerDashboard() {
               <div>
                 <p>Plan: {subscription.plan}</p>
                 <p>Status: {subscription.status}</p>
-                <p>Start Date: {subscription.startDate.toLocaleDateString()}</p>
-                <p>Next Billing Date: {subscription.nextBillingDate.toLocaleDateString()}</p>
+                <p>Start Date: {subscription.startDate.toDate().toLocaleDateString()}</p>
+                <p>Next Billing Date: {subscription.nextBillingDate.toDate().toLocaleDateString()}</p>
               </div>
             ) : (
               <p>No active subscription found.</p>
