@@ -7,9 +7,11 @@ describe('Authentication Tests', () => {
     const password = 'Ru1j3ssale77#77';
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     expect(userCredential.user).not.toBeNull();
+    expect(userCredential.user.uid).toBe('test-uid-2');
   });
 
   test('should log out a user', async () => {
+    await signInWithEmailAndPassword(auth, 'rui@pocket-agency.co.za', 'Ru1j3ssale77#77'); // Log in first
     await signOut(auth);
     expect(auth.currentUser).toBeNull();
   });
@@ -19,7 +21,7 @@ describe('Authentication Tests', () => {
       await signInWithEmailAndPassword(auth, 'wrong@example.com', 'wrongpassword');
       throw new Error('Should have failed');
     } catch (error: any) {
-      expect(error.code).toBe('auth/invalid-credential'); // Updated error code
+      expect(error.code).toBe('auth/invalid-credential');
     }
   });
 });
