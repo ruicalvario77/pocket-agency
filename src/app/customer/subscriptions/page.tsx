@@ -1,11 +1,13 @@
 "use client";
-import { Timestamp, collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { Timestamp, collection, query, where, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db } from "@/app/firebase/firebaseConfig";
 import { useEffect, useState } from "react";
 import AuthWrapper from "@/app/components/AuthWrapper";
 
+// Updated Subscription interface to include the document ID
 interface Subscription {
+  id: string;  // Added to store the Firestore document ID
   plan: string;
   status: string;
   startDate: Timestamp;
@@ -17,6 +19,7 @@ export default function SubscriptionManagement() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Fetch subscription data, including the document ID
   useEffect(() => {
     const fetchSubscription = async () => {
       if (user) {
@@ -27,8 +30,10 @@ export default function SubscriptionManagement() {
         try {
           const subSnapshot = await getDocs(subQuery);
           if (!subSnapshot.empty) {
-            const data = subSnapshot.docs[0].data();
+            const docSnap = subSnapshot.docs[0];  // Assuming one subscription per user
+            const data = docSnap.data();
             setSubscription({
+              id: docSnap.id,  // Store the document ID
               plan: data.plan,
               status: data.status,
               startDate: data.startDate,
@@ -44,9 +49,10 @@ export default function SubscriptionManagement() {
     fetchSubscription();
   }, [user]);
 
+  // Handle subscription actions using the correct document ID
   const handleAction = async (action: string) => {
     if (!user || !subscription) return;
-    const subRef = doc(db, "subscriptions", user.uid);
+    const subRef = doc(db, "subscriptions", subscription.id);  // Use the stored document ID
     let updates = {};
 
     switch (action) {
@@ -65,16 +71,22 @@ export default function SubscriptionManagement() {
     }
 
     if (Object.keys(updates).length > 0) {
-      await updateDoc(subRef, updates);
-      const subSnapshot = await getDocs(query(collection(db, "subscriptions"), where("userId", "==", user.uid)));
-      if (!subSnapshot.empty) {
-        const data = subSnapshot.docs[0].data();
-        setSubscription({
-          plan: data.plan,
-          status: data.status,
-          startDate: data.startDate,
-          nextBillingDate: data.nextBillingDate,
-        });
+      try {
+        await updateDoc(subRef, updates);
+        // Refresh subscription data after update using the document reference
+        const subSnap = await getDoc(subRef);
+        if (subSnap.exists()) {
+          const data = subSnap.data();
+          setSubscription({
+            id: subSnap.id,
+            plan: data.plan,
+            status: data.status,
+            startDate: data.startDate,
+            nextBillingDate: data.nextBillingDate,
+          });
+        }
+      } catch (error) {
+        console.error("Error updating subscription:", error);
       }
     }
   };
