@@ -1,4 +1,5 @@
-// app/subscription/page.tsx
+"use client";
+
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/app/firebase/firebaseConfig';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
