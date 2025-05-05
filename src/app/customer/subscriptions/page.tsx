@@ -1,17 +1,15 @@
 "use client";
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db } from "@/app/firebase/firebaseConfig";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import AuthWrapper from "@/app/components/AuthWrapper";
 
-// Define the Subscription interface
 interface Subscription {
   plan: string;
   status: string;
-  startDate: Timestamp; // Assuming Timestamp from Firestore
-  nextBillingDate: Timestamp; // Assuming Timestamp from Firestore
+  startDate: Timestamp;
+  nextBillingDate: Timestamp;
 }
 
 export default function SubscriptionManagement() {
@@ -19,20 +17,26 @@ export default function SubscriptionManagement() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch subscription data when user is authenticated
   useEffect(() => {
     const fetchSubscription = async () => {
       if (user) {
-        const subRef = doc(db, "subscriptions", user.uid);
-        const subSnap = await getDoc(subRef);
-        if (subSnap.exists()) {
-          const data = subSnap.data();
-          setSubscription({
-            plan: data.plan,
-            status: data.status,
-            startDate: data.startDate,
-            nextBillingDate: data.nextBillingDate,
-          });
+        const subQuery = query(
+          collection(db, "subscriptions"),
+          where("userId", "==", user.uid)
+        );
+        try {
+          const subSnapshot = await getDocs(subQuery);
+          if (!subSnapshot.empty) {
+            const data = subSnapshot.docs[0].data();
+            setSubscription({
+              plan: data.plan,
+              status: data.status,
+              startDate: data.startDate,
+              nextBillingDate: data.nextBillingDate,
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching subscription:", error);
         }
       }
       setLoading(false);
@@ -40,7 +44,6 @@ export default function SubscriptionManagement() {
     fetchSubscription();
   }, [user]);
 
-  // Handle subscription actions
   const handleAction = async (action: string) => {
     if (!user || !subscription) return;
     const subRef = doc(db, "subscriptions", user.uid);
@@ -48,35 +51,24 @@ export default function SubscriptionManagement() {
 
     switch (action) {
       case "upgrade":
-        if (subscription.plan !== "Pro") {
-          updates = { plan: "Pro" };
-        }
+        if (subscription.plan !== "Pro") updates = { plan: "Pro" };
         break;
       case "downgrade":
-        if (subscription.plan !== "Basic") {
-          updates = { plan: "Basic" };
-        }
+        if (subscription.plan !== "Basic") updates = { plan: "Basic" };
         break;
       case "pause":
-        if (subscription.status !== "paused") {
-          updates = { status: "paused" };
-        }
+        if (subscription.status !== "paused") updates = { status: "paused" };
         break;
       case "cancel":
-        if (subscription.status !== "canceled") {
-          updates = { status: "canceled" };
-        }
+        if (subscription.status !== "canceled") updates = { status: "canceled" };
         break;
-      default:
-        return;
     }
 
-    // Apply updates and refresh UI
     if (Object.keys(updates).length > 0) {
       await updateDoc(subRef, updates);
-      const subSnap = await getDoc(subRef);
-      if (subSnap.exists()) {
-        const data = subSnap.data();
+      const subSnapshot = await getDocs(query(collection(db, "subscriptions"), where("userId", "==", user.uid)));
+      if (!subSnapshot.empty) {
+        const data = subSnapshot.docs[0].data();
         setSubscription({
           plan: data.plan,
           status: data.status,
@@ -87,7 +79,6 @@ export default function SubscriptionManagement() {
     }
   };
 
-  // Render loading state
   if (loading) {
     return (
       <AuthWrapper requiredRole="customer">
@@ -98,7 +89,6 @@ export default function SubscriptionManagement() {
     );
   }
 
-  // Render subscription management UI
   return (
     <AuthWrapper requiredRole="customer">
       <div className="container mx-auto p-6">
