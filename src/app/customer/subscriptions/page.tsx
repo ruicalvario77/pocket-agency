@@ -1,4 +1,5 @@
 "use client";
+import { Timestamp } from 'firebase/firestore';
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db } from "@/app/firebase/firebaseConfig";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
@@ -9,8 +10,8 @@ import AuthWrapper from "@/app/components/AuthWrapper";
 interface Subscription {
   plan: string;
   status: string;
-  startDate: any; // Assuming Timestamp from Firestore
-  nextBillingDate: any; // Assuming Timestamp from Firestore
+  startDate: Timestamp; // Assuming Timestamp from Firestore
+  nextBillingDate: Timestamp; // Assuming Timestamp from Firestore
 }
 
 export default function SubscriptionManagement() {
